@@ -1,79 +1,108 @@
-const USERS_KEY = 'hostel_care_users';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
 const SESSION_KEY = 'hostel_care_session';
-
-// Mock Auth Utility
-const seedDefaults = () => {
-  const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-  if (users.length === 0) {
-    const defaults = [
-      { supervisor_id: 'admin', password: 'admin', role: 'supervisor', name: 'System Admin' },
-      { warden_id: 'warden1', password: 'password', role: 'warden', name: 'Warden A', hostel_id: 'M-Block Hostel' },
-      { staff_id: 'staff1', password: 'password', role: 'staff', name: 'Staff X', category: 'electrician' },
-      { registration_number: 'student1', password: 'password', role: 'student', name: 'Student Y', hostel_id: 'M-Block Hostel' }
-    ];
-    localStorage.setItem(USERS_KEY, JSON.stringify(defaults));
-  }
-};
-
-seedDefaults();
 
 export const authService = {
   // Register a new user
-  register: (userData) => {
-    const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    
-    // Check if user already exists (by ID or registration number)
-    const exists = users.find(u => {
-      // Only compare fields if they are present in both the new user and existing user
-      if (userData.registration_number && u.registration_number === userData.registration_number) return true;
-      if (userData.staff_id && u.staff_id === userData.staff_id) return true;
-      if (userData.warden_id && u.warden_id === userData.warden_id) return true;
-      if (userData.supervisor_id && u.supervisor_id === userData.supervisor_id) return true;
-      return false;
-    });
+  register: async (userData) => {
+    try {
+      // Register with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+      });
 
-    if (exists) {
-      throw new Error('User already exists with these credentials.');
+      if (authError) throw authError;
+
+      // Insert user profile into users table
+      const { data: profileData, error: profileError } = await supabase
+        .from('users')
+        .insert([
+          {
+            id: authData.user.id,
+            email: userData.email,
+            role: userData.role,
+            registration_number: userData.registration_number,
+            staff_id: userData.staff_id,
+            warden_id: userData.warden_id,
+            supervisor_id: userData.supervisor_id,
+            name: userData.name,
+            hostel_id: userData.hostel_id,
+            category: userData.category,
+          }
+        ])
+        .select();
+
+      if (profileError) throw profileError;
+
+      return profileData[0];
+    } catch (error) {
+      throw new Error(error.message || 'Registration failed');
     }
-
-    users.push(userData);
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    return userData;
   },
 
   // Login a user
-  login: (id, password, role) => {
-    const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    
-    const user = users.find(u => {
-      const matchesId = (u.registration_number === id && role === 'student') || 
-                         (u.staff_id === id && role === 'staff') || 
-                         (u.warden_id === id && role === 'warden') || 
-                         (u.supervisor_id === id && role === 'supervisor');
-      return matchesId && u.password === password;
-    });
+  login: async (email, password) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (!user) {
-      throw new Error('Invalid credentials. Please register if you haven\'t already.');
+      if (error) throw error;
+
+      // Get user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      // Save session
+      const sessionData = {
+        ...profileData,
+        authUser: data.user,
+      };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+
+      return sessionData;
+    } catch (error) {
+      throw new Error(error.message || 'Login failed');
     }
-
-    // Save session
-    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    return user;
   },
 
   // Logout
-  logout: () => {
-    localStorage.removeItem(SESSION_KEY);
+  logout: async () => {
+    try {
+      await supabase.auth.signOut();
+      localStorage.removeItem(SESSION_KEY);
+    } catch (error) {
+      throw new Error(error.message || 'Logout failed');
+    }
   },
 
   // Get current user session
   getCurrentUser: () => {
-    return JSON.parse(localStorage.getItem(SESSION_KEY));
+    const session = localStorage.getItem(SESSION_KEY);
+    return session ? JSON.parse(session) : null;
   },
 
   // Check if logged in
   isAuthenticated: () => {
     return !!localStorage.getItem(SESSION_KEY);
+  },
+
+  // Get Supabase auth session
+  getAuthSession: async () => {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    return data.session;
   }
 };

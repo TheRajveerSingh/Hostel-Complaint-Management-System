@@ -10,7 +10,7 @@ import { authService } from '../../lib/auth';
 
 export default function StudentLogin() {
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
@@ -21,18 +21,18 @@ export default function StudentLogin() {
     password: ''
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     
     try {
       if (isLogin) {
         // Login flow
-        authService.login(formData.registration_number, formData.password, 'student');
+        await authService.login(formData.college_email, formData.password);
         navigate('/student/dashboard');
       } else {
         // Register flow
-        authService.register({ ...formData, role: 'student' });
+        await authService.register({ ...formData, email: formData.college_email, role: 'student' });
         setError('Registration successful! Please login.');
         setIsLogin(true);
       }
@@ -91,12 +91,11 @@ export default function StudentLogin() {
                   required 
                 />
                 <Input 
-                  label="College Email" 
-                  type="email" 
-                  icon={Mail}
-                  placeholder="john.doe@college.edu" 
-                  value={formData.college_email}
-                  onChange={e => setFormData({...formData, college_email: e.target.value})}
+                  label="Registration Number" 
+                  icon={Hash}
+                  placeholder="e.g. 21BCE0456" 
+                  value={formData.registration_number}
+                  onChange={e => setFormData({...formData, registration_number: e.target.value})}
                   required 
                 />
                 <Select 
@@ -119,11 +118,12 @@ export default function StudentLogin() {
             )}
             
             <Input 
-              label="Registration Number" 
-              icon={Hash}
-              placeholder="e.g. 21BCE0456" 
-              value={formData.registration_number}
-              onChange={e => setFormData({...formData, registration_number: e.target.value})}
+              label="College Email" 
+              type="email" 
+              icon={Mail}
+              placeholder="john.doe@college.edu" 
+              value={formData.college_email}
+              onChange={e => setFormData({...formData, college_email: e.target.value})}
               containerClassName={!isLogin ? '' : 'animate-in slide-in-from-top-4 duration-500'}
               required 
             />
