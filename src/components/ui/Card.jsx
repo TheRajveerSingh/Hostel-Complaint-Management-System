@@ -2,9 +2,9 @@ import React from 'react';
 
 export const Card = ({ children, className = '', variant = 'glass', ...props }) => {
   const variants = {
-    default: 'bg-surface border border-outline/10 shadow-sm shadow-slate-900/5 hover:shadow-md transition-shadow duration-300',
+    default: 'bg-surface border border-outline/10 shadow-sm shadow-slate-900/5 hover:shadow-md transition-shadow duration-300 card-glow-effect',
     glass: 'glass-panel shadow-2xl shadow-indigo-950/10 hover:shadow-indigo-950/20 transition-all duration-500',
-    elevated: 'bg-surface-container-low border border-outline/10 shadow-lg hover:shadow-xl transition-all duration-300'
+    elevated: 'bg-surface-container-low border border-outline/10 shadow-lg hover:shadow-xl transition-all duration-300 card-glow-effect'
   }
 
   return (

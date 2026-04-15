@@ -65,6 +65,7 @@
 
   --glass-bg: rgba(255, 255, 255, 0.7);
   --glass-border: rgba(255, 255, 255, 0.4);
+  --card-glow: 0 0 0 1px rgba(15, 23, 42, 0.05);
 }
 
 .dark {
@@ -97,6 +98,7 @@
 
   --glass-bg: rgba(15, 23, 42, 0.6);
   --glass-border: rgba(255, 255, 255, 0.1);
+  --card-glow: 0 0 20px rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(255, 255, 255, 0.07);
 }
 
 @layer utilities {
@@ -105,7 +107,7 @@
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+    box-shadow: var(--card-glow), 0 8px 32px 0 rgba(0, 0, 0, 0.08);
   }
 
   .mesh-gradient {
@@ -125,6 +127,10 @@
     0% { transform: translateY(0px); }
     50% { transform: translateY(-10px); }
     100% { transform: translateY(0px); }
+  }
+
+  .card-glow-effect {
+    box-shadow: var(--card-glow);
   }
 
   .text-glow-primary {

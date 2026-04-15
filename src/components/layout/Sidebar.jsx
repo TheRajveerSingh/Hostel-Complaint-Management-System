@@ -9,7 +9,7 @@ const Sidebar = ({ menuItems, roleName }) => {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-72 h-screen bg-surface-container-low/30 backdrop-blur-3xl border-r border-outline-variant py-10 px-8 fixed shadow-2xl shadow-indigo-950/5">
+      <aside className="hidden md:flex flex-col w-72 h-screen bg-surface-container-low/30 backdrop-blur-3xl border-r border-outline-variant py-10 px-8 fixed shadow-2xl shadow-indigo-950/5 card-glow-effect">
         <div className="mb-14 relative group cursor-pointer" onClick={() => navigate('/')}>
           <div className="absolute -top-6 -left-6 w-24 h-24 bg-primary/10 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
           <h2 className="display-font text-3xl font-black text-on-surface tracking-tighter leading-none">
