@@ -3,6 +3,7 @@ import PortalLayout from '../../layouts/PortalLayout';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Button from '../../components/ui/Button';
+import ExportDropdown from '../../components/ui/ExportDropdown';
 import { 
   ClipboardList, 
   Search, 
@@ -68,6 +69,26 @@ export default function WardenComplaints() {
     (usersMap[c.student_id] && usersMap[c.student_id].toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const exportData = filteredComplaints.map(c => ({
+    id: c.id,
+    source: usersMap[c.student_id] || 'Unknown Origin',
+    location: c.location,
+    category: c.category,
+    specialist: usersMap[c.assigned_to] || 'Unassigned',
+    status: c.status,
+    emergency: c.is_emergency ? 'Yes' : 'No'
+  }));
+
+  const exportColumns = [
+    { header: 'Incident ID', dataKey: 'id' },
+    { header: 'Resident', dataKey: 'source' },
+    { header: 'Location', dataKey: 'location' },
+    { header: 'Category', dataKey: 'category' },
+    { header: 'Emergency', dataKey: 'emergency' },
+    { header: 'Specialist', dataKey: 'specialist' },
+    { header: 'Status', dataKey: 'status' }
+  ];
+
   const handleAssign = async () => {
     if (!selectedStaffToAssign || !selectedComplaint) return;
     try {
@@ -115,11 +136,13 @@ export default function WardenComplaints() {
             Global lifecycle monitoring of all facility anomalies and tactical deployments.
           </p>
         </div>
-        <div className="flex gap-4">
-          <Button variant="secondary" className="font-black uppercase text-xs tracking-widest gap-2 shadow-none border border-outline/10 h-14">
-            <Download size={18} strokeWidth={2.5} />
-            Export Archive
-          </Button>
+        <div className="flex gap-4 z-20">
+          <ExportDropdown 
+            data={exportData}
+            columns={exportColumns}
+            filename="grievance-registry-report"
+            title="Grievance Matrix Export"
+          />
           <Button className="font-black uppercase text-xs tracking-widest gap-2 shadow-2xl shadow-primary/30 h-14 px-8">
             <Filter size={18} strokeWidth={2.5} />
             Advanced Matrix

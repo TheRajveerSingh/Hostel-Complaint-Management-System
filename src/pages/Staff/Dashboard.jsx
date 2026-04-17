@@ -4,6 +4,7 @@ import PortalLayout from '../../layouts/PortalLayout';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Button from '../../components/ui/Button';
+import ExportDropdown from '../../components/ui/ExportDropdown';
 import { 
   ClipboardList, 
   MapPin, 
@@ -64,6 +65,19 @@ export default function StaffDashboard() {
     { label: 'Queue Load', value: assignedTasks.length, color: 'text-primary', icon: Activity, bg: 'bg-primary/5' }
   ];
 
+  const exportColumns = [
+    { header: 'Task ID', dataKey: 'id' },
+    { header: 'Category', dataKey: 'category' },
+    { header: 'Location', dataKey: 'location' },
+    { header: 'Priority', dataKey: 'emergency' },
+    { header: 'Status', dataKey: 'status' }
+  ];
+  
+  const exportData = assignedTasks.map(t => ({
+    ...t,
+    emergency: t.is_emergency ? 'PRIORITY' : 'Standard'
+  }));
+
   return (
     <PortalLayout menuItems={menuItems} roleName="Maintenance Staff">
       {/* Header Section */}
@@ -80,11 +94,13 @@ export default function StaffDashboard() {
             Manage your assigned maintenance tasks and update resolution status in real-time.
           </p>
         </div>
-        <div className="flex gap-4">
-          <Button variant="secondary" className="font-black uppercase text-xs tracking-widest gap-2 shadow-none border border-outline/10 h-14">
-            <Download size={18} strokeWidth={2.5} />
-            Export Log
-          </Button>
+        <div className="flex gap-4 z-20">
+          <ExportDropdown 
+            data={exportData}
+            columns={exportColumns}
+            filename="maintenance-task-queue"
+            title="Field Operations Task Queue"
+          />
           <Button className="font-black uppercase text-xs tracking-widest gap-2 shadow-2xl shadow-primary/30 h-14 px-8 bg-secondary hover:bg-secondary/90">
             <Activity size={18} strokeWidth={2.5} />
             Performance

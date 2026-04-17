@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PortalLayout from '../../layouts/PortalLayout';
 import { Card, CardHeader } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import ExportDropdown from '../../components/ui/ExportDropdown';
 import { 
   Users, 
   Search, 
@@ -33,6 +34,14 @@ export default function WardenStaffList() {
 
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const exportColumns = [
+    { header: 'System ID', dataKey: 'id' },
+    { header: 'Personnel Name', dataKey: 'name' },
+    { header: 'Expertise', dataKey: 'category' },
+    { header: 'Operational Status', dataKey: 'statusBadge' },
+    { header: 'Active Deployments', dataKey: 'activeCount' }
+  ];
 
   useEffect(() => {
     const fetchStaff = async () => {
@@ -78,11 +87,13 @@ export default function WardenStaffList() {
             Monitor technician availability, operational zones, and performance metrics across the hostel grid.
           </p>
         </div>
-        <div className="flex gap-4">
-          <Button variant="secondary" className="font-black uppercase text-xs tracking-widest gap-2 shadow-none border border-outline/10 h-14">
-            <Download size={18} strokeWidth={2.5} />
-            Export Personnel
-          </Button>
+        <div className="flex gap-4 z-20">
+          <ExportDropdown 
+            data={staffList}
+            columns={exportColumns}
+            filename="maintenance-personnel-registry"
+            title="Maintenance Corps Registry"
+          />
           <Button className="font-black uppercase text-xs tracking-widest gap-2 shadow-2xl shadow-secondary/30 h-14 px-8 bg-secondary hover:bg-secondary/90">
             <Filter size={18} strokeWidth={2.5} />
             Skill Filter

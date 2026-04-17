@@ -4,6 +4,7 @@ import { HOSTELS } from '../../constants/hostels';
 import PortalLayout from '../../layouts/PortalLayout';
 import { Card, CardHeader } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import ExportDropdown from '../../components/ui/ExportDropdown';
 import { 
   Database, 
   Users, 
@@ -86,6 +87,14 @@ export default function SupervisorDashboard() {
     { id: 'settings', label: 'Sys Config', path: '/supervisor/settings', icon: Settings2 }
   ];
 
+  const exportColumns = [
+    { header: 'System ID', dataKey: 'id' },
+    { header: 'Personnel Name', dataKey: 'name' },
+    { header: 'Email Address', dataKey: 'email' },
+    { header: 'Role Category', dataKey: 'role' },
+    { header: 'Hostel Allocation', dataKey: 'hostel_id' }
+  ];
+
   return (
     <PortalLayout menuItems={menuItems} roleName="System Supervisor">
       {/* Header Section */}
@@ -111,10 +120,14 @@ export default function SupervisorDashboard() {
             <option value="All">Global Matrix (All Hostels)</option>
             {HOSTELS.map(h => <option key={h} value={h}>{h}</option>)}
           </select>
-          <Button className="font-black uppercase text-xs tracking-widest gap-2 shadow-2xl shadow-primary/30 h-14 px-8">
-            <Download size={18} strokeWidth={2.5} />
-            Export
-          </Button>
+          <div className="z-20">
+            <ExportDropdown 
+              data={users}
+              columns={exportColumns}
+              filename={`${activeTab.toLowerCase()}-master-registry`}
+              title={`${activeTab} Master Registry`}
+            />
+          </div>
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PortalLayout from '../../layouts/PortalLayout';
 import { Card, CardHeader } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import ExportDropdown from '../../components/ui/ExportDropdown';
 import { supabase } from '../../lib/supabase';
 import { authService } from '../../lib/auth';
 import { 
@@ -24,6 +25,14 @@ export default function WardenStudentList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState({ total: 0, activeLogs: 0, newThisMonth: 0 });
   const [isLoading, setIsLoading] = useState(true);
+
+  const exportColumns = [
+    { header: 'Name', dataKey: 'name' },
+    { header: 'Registration', dataKey: 'registration_number' },
+    { header: 'Email', dataKey: 'email' },
+    { header: 'Room', dataKey: 'room_number' },
+    { header: 'Role', dataKey: 'role' }
+  ];
 
   const menuItems = [
     { id: 'dashboard', label: 'Op Center', path: '/warden/dashboard', icon: LayoutGrid },
@@ -106,11 +115,13 @@ export default function WardenStudentList() {
             Centralized database of all active residents, housing allocations, and contact intelligence.
           </p>
         </div>
-        <div className="flex gap-4">
-          <Button variant="secondary" className="font-black uppercase text-xs tracking-widest gap-2 shadow-none border border-outline/10 h-14">
-            <Download size={18} strokeWidth={2.5} />
-            Export Registry
-          </Button>
+        <div className="flex gap-4 z-20">
+          <ExportDropdown 
+            data={filteredStudents}
+            columns={exportColumns}
+            filename="hostel-residents-directory"
+            title="Resident Directory Export"
+          />
         </div>
       </div>
 
