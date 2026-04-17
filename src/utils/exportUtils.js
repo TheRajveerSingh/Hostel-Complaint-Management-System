@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 /**
  * Utility to export an array of JSON objects to CSV
@@ -62,7 +62,7 @@ export const exportToPDF = (data, columns, filename, title = "Data Export") => {
     return tableColumnIds.map(key => item[key] ?? 'N/A');
   });
   
-  doc.autoTable({
+  autoTable(doc, {
     head: tableHeaders,
     body: tableRows,
     startY: 35,

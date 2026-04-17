@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PortalLayout from '../../layouts/PortalLayout';
 import { Card, CardHeader } from '../../components/ui/Card';
@@ -18,32 +18,61 @@ import {
   ChevronRight,
   ArrowLeft,
   Calendar,
+  MapPin,
   User,
   ShieldCheck
 } from 'lucide-react';
 
-const mockHistory = [
-  { id: 'C-0982', category: 'Plumbing', student: 'Rajveer Singh', location: 'Block A, Room 202', status: 'Resolved', date: '2026-04-05', timeTaken: '45m', resolution: 'Replaced broken faucet valve.' },
-  { id: 'C-0975', category: 'Electrical', student: 'Amit Kumar', location: 'Block B, 3rd Floor', status: 'Resolved', date: '2026-04-05', timeTaken: '1.5h', resolution: 'Repaired short circuit in hallway lighting.' },
-  { id: 'C-0960', category: 'Plumbing', student: 'Rohan Sharma', location: 'Mess Area', status: 'Resolved', date: '2026-04-04', timeTaken: '2h', resolution: 'Cleared major drain blockage in kitchen.' },
-  { id: 'C-0942', category: 'Cleaning', student: 'Suresh Patil', location: 'Common Room', status: 'Resolved', date: '2026-04-03', timeTaken: '30m', resolution: 'Sanitized area after structural maintenance.' },
-  { id: 'C-0931', category: 'Electrical', student: 'John Doe', location: 'Block C, Room 101', status: 'Resolved', date: '2026-04-02', timeTaken: '1h', resolution: 'Fixed faulty ceiling fan regulator.' },
-];
-
+import { supabase } from '../../lib/supabase';
+import { authService } from '../../lib/auth';
+import ExportDropdown from '../../components/ui/ExportDropdown';
 export default function ResolutionLog() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const currentUser = authService.getCurrentUser();
+  const [historyLogs, setHistoryLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!currentUser) return;
+      const { data } = await supabase
+        .from('complaints')
+        .select('*')
+        .eq('assigned_to', currentUser.id)
+        .eq('status', 'resolved')
+        .order('updated_at', { ascending: false });
+      
+      if (data) setHistoryLogs(data);
+      setLoading(false);
+    };
+    fetchHistory();
+  }, [currentUser]);
+
+  const filteredHistory = historyLogs.filter(item => 
+    item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const calculateHours = (created, resolved) => {
+    if (!created || !resolved) return 'N/A';
+    const ms = new Date(resolved) - new Date(created);
+    const hrs = (ms / (1000 * 60 * 60)).toFixed(1);
+    return hrs > 0 ? `${hrs}h` : '< 1h';
+  };
 
   const menuItems = [
     { id: 'tasks', label: 'My Queue', path: '/staff/dashboard', icon: ClipboardList },
     { id: 'history', label: 'Resolution Log', path: '/staff/history', icon: History }
   ];
 
-  const filteredHistory = mockHistory.filter(item => 
-    item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.student.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.location.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const exportColumns = [
+    { header: 'Case ID', dataKey: 'id' },
+    { header: 'Category', dataKey: 'category' },
+    { header: 'Location', dataKey: 'location' },
+    { header: 'Completion Date', dataKey: 'updated_at' }
+  ];
 
   return (
     <PortalLayout menuItems={menuItems} roleName="Maintenance Staff">
@@ -73,11 +102,13 @@ export default function ResolutionLog() {
                 Immutable audit of all resolved grievances and field operations.
               </p>
             </div>
-            <div className="flex gap-4 animate-in fade-in slide-in-from-right-8 duration-1000">
-              <Button variant="secondary" className="font-black uppercase text-xs tracking-widest gap-2 shadow-none border border-outline/10 h-14">
-                <Download size={18} strokeWidth={2.5} />
-                Download PDF
-              </Button>
+            <div className="flex gap-4 animate-in fade-in slide-in-from-right-8 duration-1000 z-20 relative">
+              <ExportDropdown 
+                data={historyLogs}
+                columns={exportColumns}
+                filename="personal-resolution-archive"
+                title="Staff Historical Resolution Log"
+              />
             </div>
           </div>
         </div>
@@ -85,7 +116,7 @@ export default function ResolutionLog() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
           {[
-            { label: 'Total Resolved', value: mockHistory.length, color: 'text-success', icon: CheckCircle2 },
+            { label: 'Total Resolved', value: historyLogs.length, color: 'text-success', icon: CheckCircle2 },
             { label: 'Avg Time', value: '54m', color: 'text-secondary', icon: Clock },
             { label: 'Efficiency', value: '98%', color: 'text-primary', icon: TrendingUp },
             { label: 'Satisfied', value: '100%', color: 'text-tertiary', icon: ShieldCheck }
@@ -148,38 +179,56 @@ export default function ResolutionLog() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline/5 font-medium">
-                {filteredHistory.map((item) => (
-                  <tr key={item.id} className="hover:bg-secondary/[0.03] transition-all duration-300 group">
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-1 h-4 bg-secondary/30 rounded-full group-hover:bg-secondary transition-colors" />
-                        <span className="font-black text-xs text-on-surface tracking-widest">{item.id}</span>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6 text-xs text-on-surface flex flex-col gap-0.5">
-                      <span className="font-black uppercase tracking-tighter text-sm">{item.student}</span>
-                      <span className="text-[10px] uppercase tracking-widest opacity-60 font-black flex items-center gap-2">
-                        <MapPin size={10} strokeWidth={3} className="text-secondary" />
-                        {item.location}
-                      </span>
-                    </td>
-                    <td className="px-8 py-6 text-xs">
-                       <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-surface-container-high rounded-lg text-[10px] font-black uppercase tracking-widest opacity-60">
-                        <Calendar size={12} strokeWidth={3} />
-                        {item.date}
-                      </span>
-                    </td>
-                    <td className="px-8 py-6 text-xs">
-                      <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-success/10 text-success rounded-lg text-[10px] font-black uppercase tracking-widest">
-                        <Clock size={12} strokeWidth={3} />
-                        {item.timeTaken}
-                      </span>
-                    </td>
-                    <td className="px-8 py-6 text-xs italic opacity-80 max-w-xs truncate font-medium">
-                      {item.resolution}
-                    </td>
-                  </tr>
-                ))}
+                {loading ? (
+                  <tr><td colSpan="5" className="px-8 py-8 text-center text-sm font-bold text-on-surface-variant">Syncing with Central Archive...</td></tr>
+                ) : filteredHistory.length === 0 ? (
+                  <tr><td colSpan="5" className="px-8 py-8 text-center text-sm font-bold text-on-surface-variant">No operational history found.</td></tr>
+                ) : filteredHistory.map((item) => {
+                  
+                  // Extract completion notes cleanly from description hack
+                  let displayNotes = 'Verified & Resolved';
+                  if (item.description && item.description.includes('--- STAFF LOG ---')) {
+                    const parts = item.description.split('--- STAFF LOG ---');
+                    const staffDetails = parts[1] || '';
+                    const noteMatch = staffDetails.match(/NOTES:(.*?)(IMAGE:|$)/s);
+                    if (noteMatch && noteMatch[1].trim()) {
+                      displayNotes = noteMatch[1].trim();
+                    }
+                  }
+
+                  return (
+                    <tr key={item.id} className="hover:bg-secondary/[0.03] transition-all duration-300 group">
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-1 h-4 bg-secondary/30 rounded-full group-hover:bg-secondary transition-colors" />
+                          <span className="font-black text-xs text-on-surface tracking-widest">{item.id.substring(0,8).toUpperCase()}</span>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6 text-xs text-on-surface flex flex-col gap-0.5 mt-2">
+                        <span className="font-black uppercase tracking-tighter text-sm mb-1">{item.category}</span>
+                        <span className="text-[10px] uppercase tracking-widest opacity-60 font-black flex items-center gap-2">
+                          <MapPin size={10} strokeWidth={3} className="text-secondary" />
+                          {item.location}
+                        </span>
+                      </td>
+                      <td className="px-8 py-6 text-xs">
+                         <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-surface-container-high rounded-lg text-[10px] font-black uppercase tracking-widest opacity-60">
+                          <Calendar size={12} strokeWidth={3} />
+                          {new Date(item.updated_at).toLocaleDateString()}
+                        </span>
+                      </td>
+                      <td className="px-8 py-6 text-xs">
+                        <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-success/10 text-success rounded-lg text-[10px] font-black uppercase tracking-widest">
+                          <Clock size={12} strokeWidth={3} />
+                          {calculateHours(item.created_at, item.updated_at)}
+                        </span>
+                      </td>
+                      <td className="px-8 py-6 text-xs italic opacity-80 max-w-xs truncate font-medium">
+                        {displayNotes}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

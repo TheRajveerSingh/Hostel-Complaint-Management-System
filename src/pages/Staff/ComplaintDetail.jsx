@@ -18,7 +18,8 @@ import {
   User,
   Calendar,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  Camera
 } from 'lucide-react';
 
 import { supabase } from '../../lib/supabase';
@@ -28,20 +29,54 @@ export default function StaffComplaintDetail() {
   const navigate = useNavigate();
   const [complaint, setComplaint] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [notes, setNotes] = useState('');
+  const [imageBase64, setImageBase64] = useState('');
 
   useEffect(() => {
     const fetchComplaint = async () => {
       const { data } = await supabase.from('complaints').select('*').eq('id', id).single();
-      if (data) setComplaint(data);
+      if (data) {
+        setComplaint(data);
+        // Pre-fill notes if they already exist in description hack
+        if (data.description && data.description.includes('--- STAFF LOG ---')) {
+           const parts = data.description.split('--- STAFF LOG ---');
+           const matchNote = parts[1].match(/NOTES:(.*?)(IMAGE:|$)/s);
+           if (matchNote && matchNote[1]) setNotes(matchNote[1].trim());
+        }
+      }
       setLoading(false);
     };
     if (id) fetchComplaint();
   }, [id]);
 
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Image exceeds 2MB limit. Please upload a smaller image.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => setImageBase64(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const updateStatus = async (newStatus) => {
     try {
-      setComplaint({...complaint, status: newStatus});
-      await supabase.from('complaints').update({ status: newStatus }).eq('id', id);
+      let finalDescription = complaint.description;
+      // Clean previous staff log injections if present to avoid duplicating
+      if (finalDescription && finalDescription.includes('--- STAFF LOG ---')) {
+        finalDescription = finalDescription.split('--- STAFF LOG ---')[0].trim();
+      }
+
+      if (newStatus === 'resolved') {
+        finalDescription += `\n\n--- STAFF LOG ---\nNOTES:${notes || 'Issue resolved.'}\nIMAGE:${imageBase64 || 'NO_IMAGE'}`;
+      }
+
+      setComplaint({...complaint, status: newStatus, description: finalDescription});
+      await supabase.from('complaints').update({ status: newStatus, description: finalDescription }).eq('id', id);
+      alert(newStatus === 'resolved' ? "Task resolved. Documentation sent to Operations." : "Status updated.");
     } catch (e) {
       console.error(e);
       alert('Failed to sync status update to central records.');
@@ -145,7 +180,7 @@ export default function StaffComplaintDetail() {
                   <div className="absolute top-4 left-4 text-secondary/20">
                     <AlertCircle size={40} strokeWidth={1} />
                   </div>
-                  "{complaint.description}"
+                  "{complaint.description.split('--- STAFF LOG ---')[0].trim()}"
                 </div>
               </div>
 
@@ -219,43 +254,64 @@ export default function StaffComplaintDetail() {
                 </button>
               </div>
 
-              <div className="mt-10 pt-8 border-t border-outline/5 space-y-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-2 bg-on-surface-variant/10 text-on-surface-variant rounded-lg">
-                    <ShieldAlert size={16} strokeWidth={2.5} />
+                <div className="mt-10 pt-8 border-t border-outline/5 space-y-6">
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 bg-on-surface-variant/10 text-on-surface-variant rounded-lg">
+                      <ShieldAlert size={16} strokeWidth={2.5} />
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60 leading-relaxed italic">
+                      Resolution will package and transmit your documentation logs natively to the Warden.
+                    </p>
                   </div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60 leading-relaxed italic">
-                    Resolution will trigger an automated alert to the resident and warden logs.
-                  </p>
                 </div>
+
+                {/* Decorative background icon */}
+                <div className="absolute bottom-[-20] right-[-20] opacity-[0.03] select-none pointer-events-none group-hover/status:scale-110 transition-transform duration-1000">
+                  <CheckCircle2 size={120} strokeWidth={1} />
+                </div>
+              </Card>
+
+              <Card variant="glass" className="p-8 border border-outline/10 bg-secondary/[0.02]">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="p-2 bg-secondary/10 text-secondary rounded-lg">
+                    <Send size={16} strokeWidth={3} />
+                  </div>
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-secondary">Resolution Log & Media</h4>
+                </div>
+                <textarea 
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full bg-surface-container-low border border-outline/5 rounded-xl p-4 text-sm font-medium outline-none focus:border-secondary/40 transition-all min-h-[120px] resize-none mb-4"
+                  placeholder="Enter completion details, replacement parts, or operational hazards encountered..."
+                />
                 
-                <Button className="w-full py-6 text-sm font-black uppercase tracking-[0.3em] gap-3 bg-surface hover:bg-secondary/10 border border-outline/10 text-on-surface shadow-none hover:text-secondary group transition-all">
-                  <User size={18} strokeWidth={3} className="group-hover:translate-x-[-2px] transition-transform" />
-                  Assign Co-worker
-                </Button>
-              </div>
-
-              {/* Decorative background icon */}
-              <div className="absolute bottom-[-20] right-[-20] opacity-[0.03] select-none pointer-events-none group-hover/status:scale-110 transition-transform duration-1000">
-                <CheckCircle2 size={120} strokeWidth={1} />
-              </div>
-            </Card>
-
-            <Card variant="glass" className="p-8 border border-outline/10 bg-secondary/[0.02]">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="p-2 bg-secondary/10 text-secondary rounded-lg">
-                  <Send size={16} strokeWidth={3} />
+                <div className="mb-6 relative">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleImageUpload} 
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <div className="flex flex-col items-center justify-center p-6 bg-surface-container-low rounded-xl border border-dashed border-outline/20 hover:border-secondary transition-all">
+                    {imageBase64 ? (
+                       <img src={imageBase64} alt="Evidentiary proof" className="h-32 object-contain rounded-lg shadow-xl" />
+                    ) : (
+                       <>
+                         <Camera size={24} className="text-secondary/60 mb-2" />
+                         <span className="text-[10px] uppercase font-black tracking-widest text-secondary/60">Upload Photo Evidence</span>
+                         <span className="text-[8px] font-black uppercase text-on-surface-variant/40 tracking-wider mt-1">Tap or Drop (Max 2MB)</span>
+                       </>
+                    )}
+                  </div>
                 </div>
-                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-secondary">Communication</h4>
-              </div>
-              <textarea 
-                className="w-full bg-surface-container-low border border-outline/5 rounded-xl p-4 text-sm font-medium outline-none focus:border-secondary/40 transition-all min-h-[120px] resize-none"
-                placeholder="Transmitting log update? Enter technical notes here..."
-              />
-              <Button size="sm" className="mt-4 bg-secondary w-full py-4 text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-secondary/20">
-                Update Tactical Log
-              </Button>
-            </Card>
+
+                <Button 
+                  onClick={() => updateStatus('resolved')}
+                  className="w-full py-4 text-[10px] font-black uppercase tracking-[0.2em] bg-secondary hover:bg-secondary/90 shadow-xl shadow-secondary/30"
+                >
+                  Confirm & Sync Log
+                </Button>
+              </Card>
           </div>
         </div>
       </div>

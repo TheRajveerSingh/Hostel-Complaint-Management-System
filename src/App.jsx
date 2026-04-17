@@ -12,6 +12,7 @@ import NewComplaint from './pages/Student/NewComplaint';
 // Warden
 import WardenDashboard from './pages/Warden/Dashboard';
 import WardenComplaints from './pages/Warden/ComplaintsList';
+import WardenCompletedTasks from './pages/Warden/CompletedTasks';
 import WardenStaffList from './pages/Warden/StaffList';
 import WardenStudentList from './pages/Warden/StudentList';
 
@@ -46,6 +47,7 @@ function App() {
         {/* Warden Routes */}
         <Route path="/warden/dashboard" element={<WardenDashboard />} />
         <Route path="/warden/complaints" element={<WardenComplaints />} />
+        <Route path="/warden/completed" element={<WardenCompletedTasks />} />
         <Route path="/warden/staff" element={<WardenStaffList />} />
         <Route path="/warden/students" element={<WardenStudentList />} />
 

@@ -20,7 +20,6 @@ import {
   Sparkles,
   LayoutGrid,
   Trash2,
-  Settings2,
   MapPin
 } from 'lucide-react';
 
@@ -83,8 +82,7 @@ export default function SupervisorDashboard() {
   };
 
   const menuItems = [
-    { id: 'dashboard', label: 'Master Arch', path: '/supervisor/dashboard', icon: Database },
-    { id: 'settings', label: 'Sys Config', path: '/supervisor/settings', icon: Settings2 }
+    { id: 'dashboard', label: 'Master Arch', path: '/supervisor/dashboard', icon: Database }
   ];
 
   const exportColumns = [

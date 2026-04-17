@@ -28,6 +28,7 @@ export default function WardenStaffList() {
   const menuItems = [
     { id: 'dashboard', label: 'Op Center', path: '/warden/dashboard', icon: LayoutGrid },
     { id: 'complaints', label: 'Grievances', path: '/warden/complaints', icon: ClipboardList },
+    { id: 'completed', label: 'Resolved', path: '/warden/completed', icon: CheckCircle2 },
     { id: 'staff', label: 'Maintenance', path: '/warden/staff', icon: HardHat },
     { id: 'students', label: 'Residents', path: '/warden/students', icon: Users }
   ];
@@ -94,10 +95,6 @@ export default function WardenStaffList() {
             filename="maintenance-personnel-registry"
             title="Maintenance Corps Registry"
           />
-          <Button className="font-black uppercase text-xs tracking-widest gap-2 shadow-2xl shadow-secondary/30 h-14 px-8 bg-secondary hover:bg-secondary/90">
-            <Filter size={18} strokeWidth={2.5} />
-            Skill Filter
-          </Button>
         </div>
       </div>
 

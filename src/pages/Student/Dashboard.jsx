@@ -17,9 +17,11 @@ import {
   Activity,
   History,
   MapPin,
-  Calendar,
   Hash,
-  Sparkles
+  Sparkles,
+  Trash2,
+  Trash,
+  ChevronRight
 } from 'lucide-react';
 
 import { supabase } from '../../lib/supabase';
@@ -30,6 +32,12 @@ export default function StudentDashboard() {
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Feedback States
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   useEffect(() => {
     const loadComplaints = async () => {
@@ -49,6 +57,54 @@ export default function StudentDashboard() {
     };
     loadComplaints();
   }, []);
+
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm("CONFIRMATION: Delete this complaint permanently?")) return;
+    
+    // Optimistic UI update
+    setComplaints(complaints.filter(c => c.id !== id));
+    
+    try {
+      const { error } = await supabase.from('complaints').delete().eq('id', id);
+      if (error) throw error;
+    } catch(err) {
+      alert("Failed to delete complaint.");
+      // Rollback would happen via reloading but we keep it simple here
+    }
+  };
+
+  const handleFeedbackSubmit = async () => {
+    if (rating === 0) {
+      alert("Please provide a star rating.");
+      return;
+    }
+    
+    setIsSubmittingFeedback(true);
+    const user = authService.getCurrentUser();
+    
+    try {
+      const { error } = await supabase.from('feedback').insert([{
+        complaint_id: selectedComplaint.id,
+        student_id: user.id,
+        rating: rating,
+        comment: feedbackText
+      }]);
+      
+      if (error) throw error;
+      
+      alert("Feedback submitted officially.");
+      setSelectedComplaint(null);
+      setRating(0);
+      setHoverRating(0);
+      setFeedbackText('');
+    } catch(err) {
+      console.error(err);
+      alert("Failed to submit feedback.");
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
 
   const menuItems = [
     { id: 'dashboard', label: 'Overview', path: '/student/dashboard', icon: LayoutGrid },
@@ -159,13 +215,24 @@ export default function StudentDashboard() {
                   </td>
                   <td className="px-10 py-8"><StatusBadge status={c.status} /></td>
                   <td className="px-10 py-8 text-right">
-                    <button 
-                      onClick={() => setSelectedComplaint(c)}
-                      className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-on-surface-variant hover:text-primary transition-all group/btn"
-                    >
-                      Audit Trail
-                      <ChevronRight size={14} strokeWidth={4} className="transition-transform group-hover/btn:translate-x-1" />
-                    </button>
+                    <div className="flex justify-end gap-3 items-center">
+                      {c.status === 'pending' && (
+                        <button 
+                          onClick={(e) => handleDelete(e, c.id)}
+                          className="p-2 text-error/60 hover:text-error hover:bg-error/10 rounded-lg transition-all"
+                          title="Revoke File"
+                        >
+                          <Trash size={16} strokeWidth={2.5} />
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => setSelectedComplaint(c)}
+                        className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-on-surface-variant hover:text-primary transition-all group/btn"
+                      >
+                        Audit Trail
+                        <ChevronRight size={14} strokeWidth={4} className="transition-transform group-hover/btn:translate-x-1" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -230,21 +297,44 @@ export default function StudentDashboard() {
 
               {selectedComplaint.status === 'resolved' && (
                 <div className="p-10 bg-primary/5 rounded-3xl border-2 border-primary/20 relative group/feedback overflow-hidden">
-                  <div className="absolute top-0 right-0 p-6 opacity-10 group-hover/feedback:opacity-20 transition-opacity">
+                  <div className="absolute top-0 right-0 p-6 opacity-10 transition-opacity">
                     <Star size={100} strokeWidth={1} />
                   </div>
                   <div className="relative z-10">
                     <h4 className="display-font text-2xl font-black text-primary mb-2 uppercase tracking-tight">Resolution Feedback</h4>
                     <p className="text-sm text-on-surface-variant font-bold mb-8 leading-relaxed max-w-sm uppercase tracking-widest opacity-60">Please authenticate the quality of maintenance services provided.</p>
-                    <div className="flex space-x-4 text-tertiary mb-10">
+                    
+                    <div className="flex space-x-2 text-tertiary mb-6">
                       {[1,2,3,4,5].map(star => (
-                        <button key={star} className="p-1 hover:scale-125 hover:rotate-12 transition-all duration-300">
-                          <Star size={40} className="fill-tertiary group-hover:fill-primary transition-colors" />
+                        <button 
+                          key={star} 
+                          className="p-1 hover:scale-125 hover:rotate-12 transition-all duration-300"
+                          onMouseEnter={() => setHoverRating(star)}
+                          onMouseLeave={() => setHoverRating(0)}
+                          onClick={() => setRating(star)}
+                        >
+                          <Star 
+                            size={40} 
+                            className={`transition-colors ${(hoverRating || rating) >= star ? 'fill-primary text-primary' : 'text-on-surface-variant/30'}`} 
+                          />
                         </button>
                       ))}
                     </div>
-                    <Button className="w-full py-5 text-sm font-black uppercase tracking-[0.3em] shadow-2xl shadow-primary/30 active:scale-[0.98]">
-                      Verify & Close Case
+
+                    <textarea
+                      value={feedbackText}
+                      onChange={(e) => setFeedbackText(e.target.value)}
+                      placeholder="Enter operational commentary or details regarding the repair quality..."
+                      className="w-full bg-surface-container border-2 border-outline/10 text-on-surface text-sm font-medium rounded-2xl p-5 outline-none focus:border-primary/40 focus:ring-8 focus:ring-primary/5 transition-all mb-8 resize-none shadow-inner"
+                      rows="3"
+                    />
+
+                    <Button 
+                      onClick={handleFeedbackSubmit} 
+                      disabled={isSubmittingFeedback || rating === 0} 
+                      className={`w-full py-5 text-sm font-black uppercase tracking-[0.3em] shadow-2xl shadow-primary/30 active:scale-[0.98] ${rating === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {isSubmittingFeedback ? 'Transmitting Data...' : 'Verify & Submit Transcript'}
                     </Button>
                   </div>
                 </div>

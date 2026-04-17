@@ -63,8 +63,9 @@ export default function WardenDashboard() {
   const menuItems = [
     { id: 'dashboard', label: 'Op Center', path: '/warden/dashboard', icon: LayoutGrid },
     { id: 'complaints', label: 'Grievances', path: '/warden/complaints', icon: ClipboardList },
-    { id: 'staff', label: 'Staff Corps', path: '/warden/staff', icon: HardHat },
-    { id: 'students', label: 'Residents', path: '/warden/students', icon: Users },
+    { id: 'completed', label: 'Resolved', path: '/warden/completed', icon: CheckCircle2 },
+    { id: 'staff', label: 'Maintenance', path: '/warden/staff', icon: HardHat },
+    { id: 'students', label: 'Residents', path: '/warden/students', icon: Users }
   ];
 
   const activeReports = complaints.filter(c => c.status !== 'resolved').length;
