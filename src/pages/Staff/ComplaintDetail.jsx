@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PortalLayout from '../../layouts/PortalLayout';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
@@ -21,16 +21,52 @@ import {
   ShieldAlert
 } from 'lucide-react';
 
+import { supabase } from '../../lib/supabase';
+
 export default function StaffComplaintDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [status, setStatus] = useState('In Progress');
+  const [complaint, setComplaint] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchComplaint = async () => {
+      const { data } = await supabase.from('complaints').select('*').eq('id', id).single();
+      if (data) setComplaint(data);
+      setLoading(false);
+    };
+    if (id) fetchComplaint();
+  }, [id]);
+
+  const updateStatus = async (newStatus) => {
+    try {
+      setComplaint({...complaint, status: newStatus});
+      await supabase.from('complaints').update({ status: newStatus }).eq('id', id);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to sync status update to central records.');
+    }
+  };
 
   const menuItems = [
     { id: 'tasks', label: 'My Queue', path: '/staff/dashboard', icon: Hammer }
   ];
 
-  const complaintId = id || 'C-1042';
+  if (loading) return (
+    <PortalLayout menuItems={menuItems} roleName="Staff">
+      <div className="flex justify-center items-center h-[60vh] text-on-surface-variant font-black">
+        Syncing Task Specifications...
+      </div>
+    </PortalLayout>
+  );
+
+  if (!complaint) return (
+    <PortalLayout menuItems={menuItems} roleName="Staff">
+      <div className="flex justify-center items-center h-[60vh] text-error font-black uppercase text-xl">
+        Anomaly Ref Not Found.
+      </div>
+    </PortalLayout>
+  );
 
   return (
     <PortalLayout menuItems={menuItems} roleName="Staff">
@@ -52,15 +88,15 @@ export default function StaffComplaintDetail() {
               <div className="flex items-center gap-3 mb-4 animate-in fade-in slide-in-from-left-4 duration-700">
                 <div className="px-3 py-1 rounded-full bg-secondary/10 border border-secondary/20 flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-secondary">Reference: {complaintId}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-secondary">Reference: {complaint.id.substring(0,8).toUpperCase()}</span>
                 </div>
-                <StatusBadge status={status} />
+                <StatusBadge status={complaint.status} />
               </div>
               <h1 className="display-font text-5xl md:text-6xl font-black text-on-surface leading-[0.8] tracking-tighter mb-4 animate-in fade-in slide-in-from-left-6 duration-700">
-                Plumbing <span className="text-secondary text-glow-primary">Protocol.</span>
+                {complaint.category} <span className="text-secondary text-glow-primary">Protocol.</span>
               </h1>
               <p className="text-on-surface-variant font-medium text-lg max-w-lg mb-2">
-                Severe leakage identified in Bathroom Block A, 2nd Floor.
+                Operational tactical unit dispatched for site restoration.
               </p>
             </div>
             
@@ -69,8 +105,8 @@ export default function StaffComplaintDetail() {
                 <Calendar size={20} strokeWidth={3} />
               </div>
               <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant block opacity-60">Deployment Date</span>
-                <span className="text-sm font-black text-on-surface uppercase tracking-tight">Oct 24, 2023 • 14:30</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant block opacity-60">Entry Date</span>
+                <span className="text-sm font-black text-on-surface uppercase tracking-tight">{new Date(complaint.created_at).toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -87,7 +123,7 @@ export default function StaffComplaintDetail() {
                   <MapPin size={18} strokeWidth={3} />
                   <span className="text-[10px] font-black uppercase tracking-[0.2em]">Operational Zone</span>
                 </div>
-                <span className="text-sm font-black text-on-surface uppercase tracking-tight block">Bathroom 2nd Floor, Hostel A</span>
+                <span className="text-sm font-black text-on-surface uppercase tracking-tight block">{complaint.hostel_id} • {complaint.location}</span>
               </div>
               
               <div className="space-y-3 p-6 bg-surface-container-low rounded-2xl border border-outline/5">
@@ -95,7 +131,7 @@ export default function StaffComplaintDetail() {
                   <Tag size={18} strokeWidth={3} />
                   <span className="text-[10px] font-black uppercase tracking-[0.2em]">Classification</span>
                 </div>
-                <span className="text-sm font-black text-on-surface uppercase tracking-tight block">Mechanical / Plumbing</span>
+                <span className="text-sm font-black text-on-surface uppercase tracking-tight block">Tactical / {complaint.category}</span>
               </div>
             </div>
 
@@ -109,7 +145,7 @@ export default function StaffComplaintDetail() {
                   <div className="absolute top-4 left-4 text-secondary/20">
                     <AlertCircle size={40} strokeWidth={1} />
                   </div>
-                  "The main sink pipe is leaking heavily onto the floor. Needs a washer replacement. Water flow has been restricted as a temporary measure."
+                  "{complaint.description}"
                 </div>
               </div>
 
@@ -149,27 +185,27 @@ export default function StaffComplaintDetail() {
 
               <div className="space-y-4">
                 <button 
-                  onClick={() => setStatus('In Progress')}
+                  onClick={() => updateStatus('in_progress')}
                   className={`
                     w-full p-6 rounded-2xl transition-all duration-500 flex items-center justify-between group/btn
-                    ${status === 'In Progress' 
+                    ${complaint.status === 'in_progress' 
                       ? 'bg-secondary text-white shadow-xl shadow-secondary/30 ring-4 ring-secondary/10' 
                       : 'bg-surface-container-low border border-outline/5 text-on-surface-variant hover:border-secondary/40'
                     }
                   `}
                 >
                   <div className="flex items-center gap-4">
-                    <Clock size={20} strokeWidth={3} className={status === 'In Progress' ? 'animate-spin-slow' : ''} />
+                    <Clock size={20} strokeWidth={3} className={complaint.status === 'in_progress' ? 'animate-spin-slow' : ''} />
                     <span className="text-xs font-black uppercase tracking-widest">In Progress</span>
                   </div>
-                  <ChevronRight size={16} strokeWidth={4} className={status === 'In Progress' ? 'opacity-100' : 'opacity-0'} />
+                  <ChevronRight size={16} strokeWidth={4} className={complaint.status === 'in_progress' ? 'opacity-100' : 'opacity-0'} />
                 </button>
                 
                 <button 
-                  onClick={() => setStatus('Resolved')}
+                  onClick={() => updateStatus('resolved')}
                   className={`
                     w-full p-6 rounded-2xl transition-all duration-500 flex items-center justify-between group/btn
-                    ${status === 'Resolved' 
+                    ${complaint.status === 'resolved' 
                       ? 'bg-success text-white shadow-xl shadow-success/30 ring-4 ring-success/10' 
                       : 'bg-surface-container-low border border-outline/5 text-on-surface-variant hover:border-success/40'
                     }
@@ -179,7 +215,7 @@ export default function StaffComplaintDetail() {
                     <CheckCircle2 size={20} strokeWidth={3} />
                     <span className="text-xs font-black uppercase tracking-widest">Resolved</span>
                   </div>
-                  <ChevronRight size={16} strokeWidth={4} className={status === 'Resolved' ? 'opacity-100' : 'opacity-0'} />
+                  <ChevronRight size={16} strokeWidth={4} className={complaint.status === 'resolved' ? 'opacity-100' : 'opacity-0'} />
                 </button>
               </div>
 

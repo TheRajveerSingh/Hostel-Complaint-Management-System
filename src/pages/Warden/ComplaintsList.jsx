@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PortalLayout from '../../layouts/PortalLayout';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -26,30 +26,64 @@ import {
 } from 'lucide-react';
 import { authService } from '../../lib/auth';
 
-const mockComplaints = [
-  { id: 'C-1045', student: 'Rajveer Singh', hostel: 'M-Block Hostel', category: 'Electrical', priority: 'High', status: 'Pending', date: '2026-04-01', assignedTo: null, isEmergency: true },
-  { id: 'C-1042', student: 'Amit Kumar', hostel: 'M-Block Hostel', category: 'Plumbing', priority: 'Normal', status: 'In Progress', date: '2026-04-01', assignedTo: 'S-002', isEmergency: false },
-  { id: 'C-1038', student: 'Rohan Sharma', hostel: 'Senbegam Hostel', category: 'Internet', priority: 'Normal', status: 'Resolved', date: '2026-03-30', assignedTo: 'S-005', isEmergency: false },
-];
-
-const mockStaff = [
-  { id: 'S-001', name: 'Ramesh', role: 'Electrician', isBusy: false },
-  { id: 'S-002', name: 'Suresh', role: 'Plumber', isBusy: true },
-  { id: 'S-003', name: 'Alok', role: 'Electrician', isBusy: false },
-];
+import { supabase } from '../../lib/supabase';
 
 export default function WardenComplaints() {
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const currentUser = authService.getCurrentUser();
-  const wardenHostel = currentUser?.hostel_id || 'M-Block Hostel'; // Fallback for dev
+  const [complaints, setComplaints] = useState([]);
+  const [staffList, setStaffList] = useState([]);
+  const [usersMap, setUsersMap] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [selectedStaffToAssign, setSelectedStaffToAssign] = useState('');
 
-  const filteredComplaints = mockComplaints.filter(c => 
-    c.hostel === wardenHostel && 
-    (c.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-     c.student.toLowerCase().includes(searchQuery.toLowerCase()))
+  const currentUser = authService.getCurrentUser();
+  const wardenHostel = currentUser?.hostel_id;
+
+  const fetchData = async () => {
+    if (!wardenHostel) return;
+    
+    // Fetch Complaints
+    const { data: cData } = await supabase.from('complaints').select('*').eq('hostel_id', wardenHostel).order('created_at', { ascending: false });
+    // Fetch all users to map names manually to avoid Supabase join relation errors securely
+    const { data: uData } = await supabase.from('users').select('id, name, role');
+    
+    if (cData) setComplaints(cData);
+    if (uData) {
+      setStaffList(uData.filter(u => u.role === 'staff'));
+      const map = {};
+      uData.forEach(u => { map[u.id] = u.name; });
+      setUsersMap(map);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [wardenHostel]);
+
+  const filteredComplaints = complaints.filter(c => 
+    c.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (usersMap[c.student_id] && usersMap[c.student_id].toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const handleAssign = async () => {
+    if (!selectedStaffToAssign || !selectedComplaint) return;
+    try {
+      const { error } = await supabase
+        .from('complaints')
+        .update({ assigned_to: selectedStaffToAssign, status: 'in_progress' })
+        .eq('id', selectedComplaint.id);
+      if (error) throw error;
+      
+      setSelectedComplaint({...selectedComplaint, assigned_to: selectedStaffToAssign, status: 'in_progress'});
+      fetchData(); // refresh table
+    } catch (error) {
+      console.error(error);
+      alert('Assignment failed.');
+    }
+  };
 
   const menuItems = [
     { id: 'dashboard', label: 'Op Center', path: '/warden/dashboard', icon: LayoutGrid },
@@ -60,9 +94,9 @@ export default function WardenComplaints() {
 
   const stats = [
     { label: 'Total Logs', value: filteredComplaints.length, color: 'text-on-surface', icon: ClipboardList },
-    { label: 'Unassigned', value: filteredComplaints.filter(c => !c.assignedTo).length, color: 'text-tertiary', icon: Clock },
-    { label: 'Criticality', value: filteredComplaints.filter(c => c.isEmergency).length, color: 'text-error', icon: AlertOctagon },
-    { label: 'Resolution', value: filteredComplaints.filter(c => c.status === 'Resolved').length, color: 'text-success', icon: CheckCircle2 }
+    { label: 'Unassigned', value: filteredComplaints.filter(c => !c.assigned_to).length, color: 'text-tertiary', icon: Clock },
+    { label: 'Criticality', value: filteredComplaints.filter(c => c.is_emergency).length, color: 'text-error', icon: AlertOctagon },
+    { label: 'Resolution', value: filteredComplaints.filter(c => c.status === 'resolved').length, color: 'text-success', icon: CheckCircle2 }
   ];
 
   return (
@@ -141,25 +175,29 @@ export default function WardenComplaints() {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline/5 font-medium">
-              {filteredComplaints.map((c, idx) => (
-                <tr key={c.id} className={`hover:bg-primary/[0.03] transition-all duration-300 group ${c.isEmergency ? 'bg-error/[0.03]' : ''}`}>
+              {loading ? (
+                <tr><td colSpan="6" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">Synchronizing Operational Streams...</td></tr>
+              ) : filteredComplaints.length === 0 ? (
+                <tr><td colSpan="6" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">No Tactical Anomalies Detected.</td></tr>
+              ) : filteredComplaints.map((c) => (
+                <tr key={c.id} className={`hover:bg-primary/[0.03] transition-all duration-300 group ${c.is_emergency ? 'bg-error/[0.03]' : ''}`}>
                   <td className="px-10 py-8">
                     <div className="flex items-center gap-4">
-                      <div className={`w-1.5 h-6 rounded-full ${c.isEmergency ? 'bg-error animate-pulse shadow-glow-error' : 'bg-primary/20 group-hover:bg-primary transition-colors'}`} />
+                      <div className={`w-1.5 h-6 rounded-full ${c.is_emergency ? 'bg-error animate-pulse shadow-glow-error' : 'bg-primary/20 group-hover:bg-primary transition-colors'}`} />
                       <div className="flex flex-col">
-                        <span className={`font-black text-sm tracking-widest ${c.isEmergency ? 'text-error' : 'text-on-surface'}`}>
-                          {c.id}
+                        <span className={`font-black text-sm tracking-widest ${c.is_emergency ? 'text-error' : 'text-on-surface'}`}>
+                          {c.id.substring(0,8).toUpperCase()}
                         </span>
-                        {c.isEmergency && <span className="text-[8px] font-black uppercase text-error tracking-tighter">Emergency Alert</span>}
+                        {c.is_emergency && <span className="text-[8px] font-black uppercase text-error tracking-tighter">Emergency Alert</span>}
                       </div>
                     </div>
                   </td>
                   <td className="px-10 py-8">
                     <div className="flex flex-col">
-                      <span className="text-sm font-black text-on-surface tracking-tight uppercase">{c.student}</span>
+                      <span className="text-sm font-black text-on-surface tracking-tight uppercase">{usersMap[c.student_id] || 'Unknown Origin'}</span>
                       <span className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest opacity-60 flex items-center gap-2">
                         <MapPin size={10} strokeWidth={3} className="text-primary" />
-                        {c.hostel}
+                        {c.location}
                       </span>
                     </div>
                   </td>
@@ -169,17 +207,17 @@ export default function WardenComplaints() {
                     </span>
                   </td>
                   <td className="px-10 py-8">
-                    {c.assignedTo ? (
+                    {c.assigned_to ? (
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
                           <HardHat size={14} strokeWidth={3} />
                         </div>
-                        <span className="text-xs font-black uppercase text-on-surface tracking-widest">{c.assignedTo}</span>
+                        <span className="text-xs font-black uppercase text-on-surface tracking-widest">{usersMap[c.assigned_to]}</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-3 text-tertiary animate-pulse">
                         <Clock size={16} strokeWidth={3} />
-                        <span className="text-[10px] font-black uppercase tracking-widest font-black">Standby Deployment</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest font-black">Standby</span>
                       </div>
                     )}
                   </td>
@@ -207,22 +245,22 @@ export default function WardenComplaints() {
       {selectedComplaint && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-surface/40 backdrop-blur-xl animate-in fade-in duration-500">
           <Card variant="glass" className="w-full max-w-4xl p-0 border border-outline/10 shadow-[0_40px_80px_rgba(0,0,0,0.5)] overflow-hidden relative animate-in zoom-in-95 duration-500">
-            <div className={`absolute top-0 left-0 w-full h-2 ${selectedComplaint.isEmergency ? 'bg-error' : 'bg-primary'}`} />
+            <div className={`absolute top-0 left-0 w-full h-2 ${selectedComplaint.is_emergency ? 'bg-error' : 'bg-primary'}`} />
             
             <div className="p-12">
               <div className="flex justify-between items-start mb-12">
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
-                    <div className={`p-4 rounded-2xl ${selectedComplaint.isEmergency ? 'bg-error/10 text-error' : 'bg-primary/10 text-primary'}`}>
-                      <ShieldAlert size={32} strokeWidth={3} className={selectedComplaint.isEmergency ? 'animate-pulse' : ''} />
+                    <div className={`p-4 rounded-2xl ${selectedComplaint.is_emergency ? 'bg-error/10 text-error' : 'bg-primary/10 text-primary'}`}>
+                      <ShieldAlert size={32} strokeWidth={3} className={selectedComplaint.is_emergency ? 'animate-pulse' : ''} />
                     </div>
                     <div>
                       <h2 className="display-font text-4xl font-black text-on-surface tracking-tighter uppercase leading-none mb-2">
-                        {selectedComplaint.id} <span className="text-on-surface-variant opacity-20">/ LOG</span>
+                        {selectedComplaint.id.substring(0,8)} <span className="text-on-surface-variant opacity-20">/ LOG</span>
                       </h2>
                       <div className="flex items-center gap-3">
                         <StatusBadge status={selectedComplaint.status} />
-                        {selectedComplaint.isEmergency && (
+                        {selectedComplaint.is_emergency && (
                           <span className="px-3 py-1 bg-error text-white text-[8px] font-black uppercase tracking-[0.2em] rounded-full">Crisis Event</span>
                         )}
                       </div>
@@ -243,11 +281,11 @@ export default function WardenComplaints() {
                     <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-on-surface-variant/40 border-b border-outline/5 pb-2">Intelligence Source</h4>
                     <div className="flex items-center gap-4 bg-surface-container-low p-6 rounded-3xl border border-outline/5">
                       <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs">
-                        {selectedComplaint.student.substring(0, 2).toUpperCase()}
+                        {(usersMap[selectedComplaint.student_id] || "U").substring(0, 2).toUpperCase()}
                       </div>
                       <div>
-                        <span className="block text-sm font-black text-on-surface uppercase tracking-tight">{selectedComplaint.student}</span>
-                        <span className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest opacity-60 italic">{selectedComplaint.hostel} • Room 402</span>
+                        <span className="block text-sm font-black text-on-surface uppercase tracking-tight">{usersMap[selectedComplaint.student_id]}</span>
+                        <span className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest opacity-60 italic">{selectedComplaint.hostel_id} • {selectedComplaint.location}</span>
                       </div>
                     </div>
                   </div>
@@ -265,7 +303,7 @@ export default function WardenComplaints() {
                         <Calendar size={14} />
                         <span className="text-[8px] font-black uppercase tracking-widest">Entry Date</span>
                       </div>
-                      <span className="text-xs font-black text-on-surface uppercase">{selectedComplaint.date}</span>
+                      <span className="text-xs font-black text-on-surface uppercase">{new Date(selectedComplaint.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
                 </div>
@@ -273,15 +311,20 @@ export default function WardenComplaints() {
                 <div className="space-y-6">
                   <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-on-surface-variant/40 border-b border-outline/5 pb-2">Deployment Control</h4>
                   
-                  {selectedComplaint.assignedTo ? (
+                  {selectedComplaint.assigned_to ? (
                     <div className="bg-secondary/5 p-8 rounded-[2rem] border border-secondary/20 relative overflow-hidden group/assigned">
                       <div className="absolute top-0 right-0 p-6 opacity-[0.05] group-hover/assigned:scale-110 transition-transform">
                         <HardHat size={80} strokeWidth={1} />
                       </div>
                       <div className="relative z-10 flex flex-col items-center text-center">
                         <span className="text-[10px] font-black uppercase tracking-widest text-secondary block mb-4">Tactical Lead Assigned</span>
-                        <h5 className="display-font text-3xl font-black text-on-surface uppercase tracking-tighter mb-8">{selectedComplaint.assignedTo}</h5>
-                        <Button variant="danger" size="lg" className="w-full py-5 text-[10px] font-black uppercase tracking-widest gap-2 bg-error shadow-xl shadow-error/20">
+                        <h5 className="display-font text-3xl font-black text-on-surface uppercase tracking-tighter mb-8">{usersMap[selectedComplaint.assigned_to]}</h5>
+                        <Button variant="danger" size="lg" className="w-full py-5 text-[10px] font-black uppercase tracking-widest gap-2 bg-error shadow-xl shadow-error/20"
+                          onClick={() => {
+                            setSelectedStaffToAssign('');
+                            supabase.from('complaints').update({ assigned_to: null, status: 'pending' }).eq('id', selectedComplaint.id).then(()=>fetchData());
+                            setSelectedComplaint({...selectedComplaint, assigned_to: null, status: 'pending'});
+                          }}>
                           <ShieldAlert size={16} strokeWidth={3} />
                           Revoke Deployment
                         </Button>
@@ -292,16 +335,19 @@ export default function WardenComplaints() {
                       <div className="space-y-3">
                         <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60 ml-2">Select Tactical Specialist</label>
                         <div className="relative">
-                          <select className="w-full bg-surface-container-low border-2 border-outline/5 rounded-2xl p-5 pl-14 text-sm font-black uppercase tracking-widest text-on-surface appearance-none focus:border-primary/40 focus:ring-8 focus:ring-primary/5 transition-all">
+                          <select 
+                            value={selectedStaffToAssign}
+                            onChange={(e) => setSelectedStaffToAssign(e.target.value)}
+                            className="w-full bg-surface-container-low border-2 border-outline/5 rounded-2xl p-5 pl-14 text-sm font-black uppercase tracking-widest text-on-surface appearance-none focus:border-primary/40 focus:ring-8 focus:ring-primary/5 transition-all">
                             <option value="">Awaiting Specialist Selection...</option>
-                            {mockStaff.filter(s => !s.isBusy).map(staff => (
-                              <option key={staff.id} value={staff.id}>{staff.id} - {staff.name} ({staff.role})</option>
+                            {staffList.map(staff => (
+                              <option key={staff.id} value={staff.id}>{staff.name}</option>
                             ))}
                           </select>
                           <HardHat size={24} strokeWidth={3} className="absolute left-5 top-1/2 -translate-y-1/2 text-primary pointer-events-none" />
                         </div>
                       </div>
-                      <Button className="w-full py-6 text-sm font-black uppercase tracking-[0.3em] gap-3 bg-primary shadow-2xl shadow-primary/30">
+                      <Button onClick={handleAssign} className="w-full py-6 text-sm font-black uppercase tracking-[0.3em] gap-3 bg-primary shadow-2xl shadow-primary/30">
                         Initiate Deployment
                         <ArrowUpRight size={20} strokeWidth={4} />
                       </Button>

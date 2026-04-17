@@ -11,6 +11,8 @@ import { authService } from '../../lib/auth';
 export default function StudentLogin() {
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
@@ -18,7 +20,9 @@ export default function StudentLogin() {
     hostel_id: '',
     room_number: '',
     registration_number: '',
-    password: ''
+    password: '',
+    otp: '',
+    newPassword: ''
   });
 
   const handleSubmit = async (e) => {
@@ -36,6 +40,38 @@ export default function StudentLogin() {
         setError('Registration successful! Please login.');
         setIsLogin(true);
       }
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setError('');
+    if (!formData.college_email) {
+      setError('Please enter your college email first.');
+      return;
+    }
+    try {
+      await authService.resetPasswordRequest(formData.college_email);
+      setOtpSent(true);
+      setError('OTP sent! Please check your email.');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setError('');
+    if (!formData.otp || !formData.newPassword) {
+      setError('Please enter the OTP and a new password.');
+      return;
+    }
+    try {
+      await authService.verifyOtpAndUpdatePassword(formData.college_email, formData.otp, formData.newPassword);
+      setError('Password updated successfully! Please login.');
+      setIsForgotPassword(false);
+      setOtpSent(false);
+      setIsLogin(true);
     } catch (err) {
       setError(err.message);
     }
@@ -67,99 +103,176 @@ export default function StudentLogin() {
             </div>
             
             <h2 className="display-font text-4xl md:text-5xl font-black text-on-surface leading-[0.9] tracking-tighter mb-4">
-              {isLogin ? 'Student Login' : 'Student Registry'}
+              {isForgotPassword ? 'Reset Password' : (isLogin ? 'Student Login' : 'Student Registry')}
             </h2>
             <p className="text-on-surface-variant font-medium text-lg leading-relaxed max-w-md">
-              {isLogin ? 'Secure access for verified hostel residents.' : 'Register below to access your institutional grievance dashboard.'}
+              {isForgotPassword 
+                ? 'Enter your credentials to recover your account.' 
+                : (isLogin ? 'Secure access for verified hostel residents.' : 'Register below to access your institutional grievance dashboard.')}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className={`p-4 rounded-xl text-xs font-bold uppercase tracking-widest border ${error.includes('successful') ? 'bg-success/10 border-success/20 text-success' : 'bg-error/10 border-error/20 text-error'}`}>
-                {error}
-              </div>
-            )}
-            {!isLogin && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-4 duration-500">
-                <Input 
-                  label="Full Name" 
-                  icon={User}
-                  placeholder="e.g. John Doe" 
-                  value={formData.name}
-                  onChange={e => setFormData({...formData, name: e.target.value})}
-                  required 
-                />
-                <Input 
-                  label="Registration Number" 
-                  icon={Hash}
-                  placeholder="e.g. 21BCE0456" 
-                  value={formData.registration_number}
-                  onChange={e => setFormData({...formData, registration_number: e.target.value})}
-                  required 
-                />
-                <Select 
-                  label="Hostel" 
-                  icon={Building2}
-                  options={HOSTELS}
-                  value={formData.hostel_id}
-                  onChange={e => setFormData({...formData, hostel_id: e.target.value})}
-                  required 
-                />
-                <Input 
-                  label="Room Number" 
-                  icon={MapPin}
-                  placeholder="e.g. 420" 
-                  value={formData.room_number}
-                  onChange={e => setFormData({...formData, room_number: e.target.value})}
-                  required 
-                />
-              </div>
-            )}
-            
-            <Input 
-              label="College Email" 
-              type="email" 
-              icon={Mail}
-              placeholder="john.doe@college.edu" 
-              value={formData.college_email}
-              onChange={e => setFormData({...formData, college_email: e.target.value})}
-              containerClassName={!isLogin ? '' : 'animate-in slide-in-from-top-4 duration-500'}
-              required 
-            />
-            
-            <Input 
-              label="Password" 
-              type="password" 
-              icon={Lock}
-              placeholder="••••••••" 
-              value={formData.password}
-              onChange={e => setFormData({...formData, password: e.target.value})}
-              containerClassName={!isLogin ? '' : 'animate-in slide-in-from-top-4 duration-500 delay-100'}
-              required 
-            />
+          {isForgotPassword ? (
+            <div className="space-y-6">
+              {error && (
+                <div className={`p-4 rounded-xl text-xs font-bold uppercase tracking-widest border ${error.includes('successful') || error.includes('OTP sent') ? 'bg-success/10 border-success/20 text-success' : 'bg-error/10 border-error/20 text-error'}`}>
+                  {error}
+                </div>
+              )}
+              
+              <Input 
+                label="College Email" 
+                type="email" 
+                icon={Mail}
+                placeholder="john.doe@college.edu" 
+                value={formData.college_email}
+                onChange={e => setFormData({...formData, college_email: e.target.value})}
+                required 
+                disabled={otpSent}
+              />
 
-            <Button type="submit" className="w-full mt-10 py-5 text-lg font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/40 group relative overflow-hidden">
-              <span className="relative z-10">{isLogin ? 'Access Portal' : 'Submit Application'}</span>
-              <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 skew-x-[-45deg]" />
-            </Button>
-          </form>
+              {otpSent && (
+                <div className="animate-in slide-in-from-top-4 duration-500 space-y-6">
+                  <Input 
+                    label="6-Digit OTP" 
+                    icon={Hash}
+                    placeholder="123456" 
+                    value={formData.otp}
+                    onChange={e => setFormData({...formData, otp: e.target.value})}
+                    required 
+                  />
+                  <Input 
+                    label="New Password" 
+                    type="password" 
+                    icon={Lock}
+                    placeholder="••••••••" 
+                    value={formData.newPassword}
+                    onChange={e => setFormData({...formData, newPassword: e.target.value})}
+                    required 
+                  />
+                </div>
+              )}
 
-          <CardFooter className="text-center pt-10 mt-10">
+              <Button 
+                type="button" 
+                onClick={otpSent ? handleVerifyOtp : handleForgotPassword} 
+                className="w-full mt-10 py-5 text-lg font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/40 group relative overflow-hidden"
+              >
+                <span className="relative z-10">{otpSent ? 'Update Password' : 'Send OTP'}</span>
+                <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 skew-x-[-45deg]" />
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {error && (
+                <div className={`p-4 rounded-xl text-xs font-bold uppercase tracking-widest border ${error.includes('successful') ? 'bg-success/10 border-success/20 text-success' : 'bg-error/10 border-error/20 text-error'}`}>
+                  {error}
+                </div>
+              )}
+              {!isLogin && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-4 duration-500">
+                  <Input 
+                    label="Full Name" 
+                    icon={User}
+                    placeholder="e.g. John Doe" 
+                    value={formData.name}
+                    onChange={e => setFormData({...formData, name: e.target.value})}
+                    required 
+                  />
+                  <Input 
+                    label="Registration Number" 
+                    icon={Hash}
+                    placeholder="e.g. 21BCE0456" 
+                    value={formData.registration_number}
+                    onChange={e => setFormData({...formData, registration_number: e.target.value})}
+                    required 
+                  />
+                  <Select 
+                    label="Hostel" 
+                    icon={Building2}
+                    options={HOSTELS}
+                    value={formData.hostel_id}
+                    onChange={e => setFormData({...formData, hostel_id: e.target.value})}
+                    required 
+                  />
+                  <Input 
+                    label="Room Number" 
+                    icon={MapPin}
+                    placeholder="e.g. 420" 
+                    value={formData.room_number}
+                    onChange={e => setFormData({...formData, room_number: e.target.value})}
+                    required 
+                  />
+                </div>
+              )}
+              
+              <Input 
+                label="College Email" 
+                type="email" 
+                icon={Mail}
+                placeholder="john.doe@college.edu" 
+                value={formData.college_email}
+                onChange={e => setFormData({...formData, college_email: e.target.value})}
+                containerClassName={!isLogin ? '' : 'animate-in slide-in-from-top-4 duration-500'}
+                required 
+              />
+              
+              <div className={!isLogin ? '' : 'animate-in slide-in-from-top-4 duration-500 delay-100'}>
+                <Input 
+                  label="Password" 
+                  type="password" 
+                  icon={Lock}
+                  placeholder="••••••••" 
+                  value={formData.password}
+                  onChange={e => setFormData({...formData, password: e.target.value})}
+                  required 
+                />
+                
+                {isLogin && (
+                  <div className="text-right mt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsForgotPassword(true);
+                        setError('');
+                      }}
+                      className="text-xs font-bold text-primary hover:text-primary-fixed transition-colors underline underline-offset-4 decoration-primary/30 outline-none focus:text-primary-fixed"
+                    >
+                      Forgot your password?
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <Button type="submit" className="w-full mt-10 py-5 text-lg font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/40 group relative overflow-hidden">
+                <span className="relative z-10">{isLogin ? 'Access Portal' : 'Submit Application'}</span>
+                <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 skew-x-[-45deg]" />
+              </Button>
+            </form>
+          )}
+
+          <CardFooter className="text-center pt-10 mt-10 border-t border-outline/5 relative z-10">
             <span className="text-sm font-semibold text-on-surface-variant">
-              {isLogin ? "Don't have an account yet? " : "Already verified? "}
+              {isForgotPassword ? "Remembered your password? " : (isLogin ? "Don't have an account yet? " : "Already verified? ")}
               <button 
                 type="button" 
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-primary hover:text-secondary-container transition-colors font-black decoration-primary/40 decoration-2 underline-offset-8 underline"
+                onClick={() => {
+                  if (isForgotPassword) {
+                    setIsForgotPassword(false);
+                    setOtpSent(false);
+                  } else {
+                    setIsLogin(!isLogin);
+                  }
+                  setError('');
+                }}
+                className="text-primary hover:text-secondary-container transition-colors font-black decoration-primary/40 decoration-2 underline-offset-8 underline ml-1"
               >
-                {isLogin ? 'Register Portal' : 'Login Access'}
+                {isForgotPassword ? 'Back to Login' : (isLogin ? 'Register Portal' : 'Login Access')}
               </button>
             </span>
           </CardFooter>
         </Card>
       </div>
-      
       
     </div>
   );

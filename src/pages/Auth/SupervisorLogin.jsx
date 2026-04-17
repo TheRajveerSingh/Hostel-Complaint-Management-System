@@ -3,23 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardFooter } from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
-import { Database as SupervisorIcon, Lock, ShieldCheck, Hash, ArrowLeft, Terminal } from 'lucide-react';
+import { Database as SupervisorIcon, Lock, ShieldCheck, Hash, ArrowLeft, Terminal, User } from 'lucide-react';
 import { authService } from '../../lib/auth';
 
 export default function SupervisorLogin() {
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
+    email: '',
     supervisor_id: '',
     secret_key: ''
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     
     try {
-      authService.login(formData.supervisor_id, formData.secret_key, 'supervisor');
+      await authService.login(formData.email, formData.secret_key, 'supervisor');
       navigate('/supervisor/dashboard');
     } catch (err) {
       setError(err.message);
@@ -66,11 +67,12 @@ export default function SupervisorLogin() {
               </div>
             )}
             <Input 
-              label="Supervisor ID" 
-              icon={Hash}
-              placeholder="e.g. ROOT-AD-01" 
-              value={formData.supervisor_id}
-              onChange={e => setFormData({...formData, supervisor_id: e.target.value})}
+              label="Email Address" 
+              type="email"
+              icon={User}
+              placeholder="e.g. admin@hostel.edu" 
+              value={formData.email}
+              onChange={e => setFormData({...formData, email: e.target.value})}
               required 
             />
             

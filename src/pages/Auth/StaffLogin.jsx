@@ -12,21 +12,22 @@ export default function StaffLogin() {
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
+    email: '',
     staff_id: '',
     category: '',
     password: ''
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     
     try {
       if (isLogin) {
-        authService.login(formData.staff_id, formData.password, 'staff');
+        await authService.login(formData.email, formData.password, 'staff');
         navigate('/staff/dashboard');
       } else {
-        authService.register({ ...formData, role: 'staff' });
+        await authService.register({ ...formData, role: 'staff' });
         setError('Registration successful! Please login.');
         setIsLogin(true);
       }
@@ -109,11 +110,12 @@ export default function StaffLogin() {
             )}
             
             <Input 
-              label="Staff ID" 
-              icon={Hash}
-              placeholder="e.g. S-0012" 
-              value={formData.staff_id}
-              onChange={e => setFormData({...formData, staff_id: e.target.value})}
+              label="Email Address" 
+              type="email"
+              icon={User}
+              placeholder="e.g. staff@hostel.edu" 
+              value={formData.email}
+              onChange={e => setFormData({...formData, email: e.target.value})}
               containerClassName={!isLogin ? '' : 'animate-in slide-in-from-top-4 duration-500'}
               required 
             />

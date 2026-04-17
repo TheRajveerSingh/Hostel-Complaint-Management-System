@@ -1,9 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from './supabase';
 
 const SESSION_KEY = 'hostel_care_session';
 
@@ -61,9 +56,12 @@ export const authService = {
         .from('users')
         .select('*')
         .eq('id', data.user.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) throw profileError;
+      if (!profileData) {
+        throw new Error("Account corrupted (Your initial registration was stopped by a database rule). Please delete your account in Supabase or use a new email to re-register.");
+      }
 
       // Save session
       const sessionData = {
@@ -104,5 +102,33 @@ export const authService = {
     const { data, error } = await supabase.auth.getSession();
     if (error) throw error;
     return data.session;
+  },
+
+  // Request Password Reset OTP
+  resetPasswordRequest: async (email) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to send OTP');
+    }
+  },
+
+  // Verify OTP and Update Password
+  verifyOtpAndUpdatePassword: async (email, token, newPassword) => {
+    try {
+      // For password reset, type is 'recovery'
+      const { error: otpError } = await supabase.auth.verifyOtp({ email, token, type: 'recovery' });
+      if (otpError) throw otpError;
+
+      // Update the user's password using the active session from OTP
+      const { error: pwdError } = await supabase.auth.updateUser({ password: newPassword });
+      if (pwdError) throw pwdError;
+
+      return true;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to verify OTP or update password');
+    }
   }
 };

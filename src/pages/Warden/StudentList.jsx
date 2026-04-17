@@ -1,29 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import PortalLayout from '../../layouts/PortalLayout';
 import { Card, CardHeader } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import { supabase } from '../../lib/supabase';
+import { authService } from '../../lib/auth';
 import { 
   Users, 
   Search, 
-  Filter, 
   Download, 
   MapPin, 
   Mail, 
   Hash, 
   Calendar, 
-  ChevronRight,
   ClipboardList,
   LayoutGrid,
   HardHat,
   GraduationCap
 } from 'lucide-react';
 
-const mockStudents = [
-  { name: 'Rajveer Singh', reg: '21BCE0456', email: 'rajveer@college.edu', hostel: 'Hostel B', room: '102', join: '2023-08-01' },
-  { name: 'Amit Kumar', reg: '21BCE0123', email: 'amit@college.edu', hostel: 'Hostel A', room: '304', join: '2023-08-01' }
-];
-
 export default function WardenStudentList() {
+  const [students, setStudents] = useState([]);
+  const [filteredStudents, setFilteredStudents] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [stats, setStats] = useState({ total: 0, activeLogs: 0, newThisMonth: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+
   const menuItems = [
     { id: 'dashboard', label: 'Op Center', path: '/warden/dashboard', icon: LayoutGrid },
     { id: 'complaints', label: 'Grievances', path: '/warden/complaints', icon: ClipboardList },
@@ -31,11 +32,62 @@ export default function WardenStudentList() {
     { id: 'students', label: 'Residents', path: '/warden/students', icon: Users }
   ];
 
-  const stats = [
-    { label: 'Total Residents', value: 1240, color: 'text-on-surface', icon: Users },
-    { label: 'Active Logs', value: 42, color: 'text-primary', icon: ClipboardList },
-    { label: 'New This Month', value: 12, color: 'text-success', icon: Calendar },
-    { label: 'Expiring Soon', value: 5, color: 'text-tertiary', icon: Hash }
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (searchTerm) {
+      setFilteredStudents(students.filter(s => 
+        (s.name && s.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (s.registration_number && s.registration_number.toLowerCase().includes(searchTerm.toLowerCase()))
+      ));
+    } else {
+      setFilteredStudents(students);
+    }
+  }, [searchTerm, students]);
+
+  const fetchData = async () => {
+    const currentUser = authService.getCurrentUser();
+    if (!currentUser) return;
+    
+    // Fetch residents assigned to this warden's hostel
+    const { data: studentData } = await supabase
+      .from('users')
+      .select('*')
+      .eq('role', 'student')
+      .eq('hostel_id', currentUser.hostel_id);
+      
+    // Fetch active complaints (not resolved) for stats
+    const { data: complaintsData } = await supabase
+      .from('complaints')
+      .select('*')
+      .eq('hostel_id', currentUser.hostel_id)
+      .neq('status', 'Resolved')
+      .neq('status', 'Completed');
+      
+    if (studentData) {
+      setStudents(studentData);
+      
+      const currentMonth = new Date().getMonth();
+      const newThisMonthCount = studentData.filter(s => {
+        if (!s.created_at) return false;
+        return new Date(s.created_at).getMonth() === currentMonth;
+      }).length;
+
+      setStats({
+        total: studentData.length,
+        activeLogs: complaintsData ? complaintsData.length : 0,
+        newThisMonth: newThisMonthCount
+      });
+    }
+    setIsLoading(false);
+  };
+
+  const statCards = [
+    { label: 'Total Residents', value: stats.total, color: 'text-on-surface', icon: Users },
+    { label: 'Active Logs', value: stats.activeLogs, color: 'text-primary', icon: ClipboardList },
+    { label: 'New This Month', value: stats.newThisMonth, color: 'text-success', icon: Calendar }
   ];
 
   return (
@@ -59,16 +111,12 @@ export default function WardenStudentList() {
             <Download size={18} strokeWidth={2.5} />
             Export Registry
           </Button>
-          <Button className="font-black uppercase text-xs tracking-widest gap-2 shadow-2xl shadow-primary/30 h-14 px-8">
-            <Filter size={18} strokeWidth={2.5} />
-            Sector Filter
-          </Button>
         </div>
       </div>
 
       {/* Grid Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-16 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
-        {stats.map((stat, idx) => {
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
+        {statCards.map((stat, idx) => {
           const Icon = stat.icon;
           return (
             <Card key={stat.label} variant="glass" className="p-8 border border-outline/10 group hover:border-primary/30 transition-all duration-500 overflow-hidden relative">
@@ -94,70 +142,86 @@ export default function WardenStudentList() {
             <input 
               type="text" 
               placeholder="Search by Registration or Name..." 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
               className="w-full bg-surface-container-low border border-outline/10 rounded-xl py-4 pl-12 pr-4 text-xs font-bold uppercase tracking-widest text-on-surface outline-none focus:border-primary/40 transition-all shadow-inner"
             />
           </div>
         </div>
 
         <div className="overflow-x-auto w-full">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-primary/[0.02]">
-                <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Resident Identity</th>
-                <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Registration</th>
-                <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Communication Loop</th>
-                <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Strategic Allocation</th>
-                <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black text-right">Registry Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline/5 font-medium">
-              {mockStudents.map((s, idx) => (
-                <tr key={s.reg} className="hover:bg-primary/[0.03] transition-all duration-300 group">
-                  <td className="px-10 py-8">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs group-hover:scale-110 transition-transform">
-                        {s.name.substring(0, 2).toUpperCase()}
-                      </div>
-                      <span className="font-black text-sm text-on-surface tracking-tight uppercase">
-                        {s.name}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-10 py-8">
-                    <div className="flex items-center gap-2">
-                      <Hash size={12} className="text-on-surface-variant opacity-60" strokeWidth={3} />
-                      <span className="font-mono text-sm text-on-surface-variant tracking-widest font-black uppercase">
-                        {s.reg}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-10 py-8">
-                    <div className="flex items-center gap-2 text-primary hover:underline underline-offset-4 cursor-pointer decoration-2 transition-all">
-                      <Mail size={12} strokeWidth={3} />
-                      <span className="text-xs font-black uppercase tracking-tight">{s.email}</span>
-                    </div>
-                  </td>
-                  <td className="px-10 py-8">
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-2 mb-1">
-                        <MapPin size={12} className="text-primary" strokeWidth={3} />
-                        <span className="text-sm font-black text-on-surface tracking-tight uppercase">{s.hostel}</span>
-                      </div>
-                      <span className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest opacity-60">
-                        Room {s.room} • Wing East
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-10 py-8 text-right">
-                    <div className="flex flex-col items-end">
-                      <span className="text-xs font-black text-on-surface-variant tracking-widest uppercase">{s.join}</span>
-                      <span className="text-[8px] text-on-surface-variant font-black uppercase tracking-widest opacity-40">System Synced</span>
-                    </div>
-                  </td>
+          {isLoading ? (
+            <div className="p-16 text-center text-on-surface-variant/50 font-black tracking-widest uppercase text-xs flex flex-col items-center gap-4">
+              <div className="w-8 h-8 rounded-xl border-4 border-primary/20 border-t-primary animate-spin" />
+              Retrieving Database...
+            </div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="p-16 text-center text-on-surface-variant font-black tracking-widest uppercase text-xs flex flex-col items-center gap-4">
+              <Users size={48} className="opacity-20" />
+              No personnel found in directory
+            </div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-primary/[0.02]">
+                  <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Resident Identity</th>
+                  <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Registration</th>
+                  <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Communication Loop</th>
+                  <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Strategic Allocation</th>
+                  <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black text-right">Registry Date</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-outline/5 font-medium">
+                {filteredStudents.map((s) => (
+                  <tr key={s.id} className="hover:bg-primary/[0.03] transition-all duration-300 group">
+                    <td className="px-10 py-8">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs group-hover:scale-110 transition-transform">
+                          {s.name ? s.name.substring(0, 2).toUpperCase() : '??'}
+                        </div>
+                        <span className="font-black text-sm text-on-surface tracking-tight uppercase">
+                          {s.name || 'Unknown'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-10 py-8">
+                      <div className="flex items-center gap-2">
+                        <Hash size={12} className="text-on-surface-variant opacity-60" strokeWidth={3} />
+                        <span className="font-mono text-sm text-on-surface-variant tracking-widest font-black uppercase">
+                          {s.registration_number || 'N/A'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-10 py-8">
+                      <div className="flex items-center gap-2 text-primary hover:underline underline-offset-4 cursor-pointer decoration-2 transition-all">
+                        <Mail size={12} strokeWidth={3} />
+                        <span className="text-xs font-black uppercase tracking-tight">{s.email}</span>
+                      </div>
+                    </td>
+                    <td className="px-10 py-8">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2 mb-1">
+                          <MapPin size={12} className="text-primary" strokeWidth={3} />
+                          <span className="text-sm font-black text-on-surface tracking-tight uppercase">{s.hostel_id || 'unassigned'}</span>
+                        </div>
+                        <span className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest opacity-60">
+                          {s.room_number ? `Room ${s.room_number}` : 'Awaiting Allocation'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-10 py-8 text-right">
+                      <div className="flex flex-col items-end">
+                        <span className="text-xs font-black text-on-surface-variant tracking-widest uppercase">
+                          {s.created_at ? new Date(s.created_at).toLocaleDateString() : 'Recent'}
+                        </span>
+                        <span className="text-[8px] text-on-surface-variant font-black uppercase tracking-widest opacity-40">System Synced</span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </Card>
       

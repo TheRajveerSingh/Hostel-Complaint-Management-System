@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PortalLayout from '../../layouts/PortalLayout';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
@@ -22,16 +22,33 @@ import {
   Sparkles
 } from 'lucide-react';
 
-// Mock Data
-const mockComplaints = [
-  { id: 'C-1042', category: 'Electrical', status: 'Pending', date: '2026-04-01', location: 'Room 420', desc: 'Ceiling fan making clicking noise and running slow.' },
-  { id: 'C-1041', category: 'Plumbing', status: 'In Progress', date: '2026-03-30', location: 'Bathroom 2nd Floor', desc: 'Leakage in the main faucet.' },
-  { id: 'C-1038', category: 'Internet', status: 'Resolved', date: '2026-03-25', location: 'Room 420', desc: 'Wi-Fi connectivity issues during peak hours.', needsFeedback: true },
-];
+import { supabase } from '../../lib/supabase';
+import { authService } from '../../lib/auth';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [complaints, setComplaints] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadComplaints = async () => {
+      const user = authService.getCurrentUser();
+      if (!user) return;
+      
+      const { data, error } = await supabase
+        .from('complaints')
+        .select('*')
+        .eq('student_id', user.id)
+        .order('created_at', { ascending: false });
+        
+      if (!error && data) {
+        setComplaints(data);
+      }
+      setLoading(false);
+    };
+    loadComplaints();
+  }, []);
 
   const menuItems = [
     { id: 'dashboard', label: 'Overview', path: '/student/dashboard', icon: LayoutGrid },
@@ -39,10 +56,10 @@ export default function StudentDashboard() {
   ];
 
   const stats = [
-    { label: 'All Cases', value: mockComplaints.length, color: 'text-primary', icon: FileText, bg: 'bg-primary/5' },
-    { label: 'Pending', value: mockComplaints.filter(c => c.status === 'Pending').length, color: 'text-tertiary', icon: Clock, bg: 'bg-tertiary/5' },
-    { label: 'Active', value: mockComplaints.filter(c => c.status === 'In Progress').length, color: 'text-secondary', icon: Activity, bg: 'bg-secondary/5' },
-    { label: 'Resolved', value: mockComplaints.filter(c => c.status === 'Resolved').length, color: 'text-success', icon: CheckCircle2, bg: 'bg-success/5' }
+    { label: 'All Cases', value: complaints.length, color: 'text-primary', icon: FileText, bg: 'bg-primary/5' },
+    { label: 'Pending', value: complaints.filter(c => c.status === 'pending').length, color: 'text-tertiary', icon: Clock, bg: 'bg-tertiary/5' },
+    { label: 'Active', value: complaints.filter(c => c.status === 'in_progress').length, color: 'text-secondary', icon: Activity, bg: 'bg-secondary/5' },
+    { label: 'Resolved', value: complaints.filter(c => c.status === 'resolved').length, color: 'text-success', icon: CheckCircle2, bg: 'bg-success/5' }
   ];
 
   return (
@@ -112,15 +129,19 @@ export default function StudentDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline/5">
-              {mockComplaints.map((c, idx) => (
+              {loading ? (
+                <tr><td colSpan="5" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">Synchronizing data stream...</td></tr>
+              ) : complaints.length === 0 ? (
+                <tr><td colSpan="5" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">No grievances reported yet.</td></tr>
+              ) : complaints.map((c) => (
                 <tr key={c.id} className="hover:bg-primary/[0.03] transition-all duration-300 group">
                   <td className="px-10 py-8">
                     <div className="flex items-center gap-3">
-                      {c.needsFeedback && (
+                      {c.status === 'resolved' && (
                         <div className="w-2 h-2 bg-tertiary rounded-full animate-ping shadow-lg shadow-tertiary/50" />
                       )}
                       <span className="font-black text-sm text-on-surface tracking-widest">
-                        {c.id}
+                        {c.id.substring(0, 8).toUpperCase()}
                       </span>
                     </div>
                   </td>
@@ -133,7 +154,7 @@ export default function StudentDashboard() {
                   <td className="px-10 py-8">
                     <div className="flex items-center gap-2 text-on-surface-variant font-black text-[10px] tracking-widest">
                       <Calendar size={12} strokeWidth={3} className="text-primary" />
-                      {c.date}
+                      {new Date(c.created_at).toLocaleDateString()}
                     </div>
                   </td>
                   <td className="px-10 py-8"><StatusBadge status={c.status} /></td>
@@ -172,7 +193,7 @@ export default function StudentDashboard() {
               </div>
               
               <h2 className="display-font text-4xl md:text-5xl font-black text-on-surface leading-[0.9] tracking-tighter mb-6 uppercase tracking-wider">
-                Case ID: {selectedComplaint.id}
+                Case ID: {selectedComplaint.id.substring(0,8)}
               </h2>
 
               <div className="grid grid-cols-2 gap-8 mb-12">
@@ -195,7 +216,7 @@ export default function StudentDashboard() {
                   <span className="text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em] block">Logged Date</span>
                   <div className="flex items-center gap-2 text-on-surface font-bold">
                     <Calendar size={16} className="text-primary" strokeWidth={2.5} />
-                    {selectedComplaint.date}
+                    {new Date(selectedComplaint.created_at).toLocaleDateString()}
                   </div>
                 </div>
               </div>
@@ -203,11 +224,11 @@ export default function StudentDashboard() {
               <div className="bg-surface-container-high/50 p-8 rounded-2xl border border-outline/5 mb-10 group hover:border-primary/10 transition-colors">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-3">Issue Description</h4>
                 <p className="text-on-surface font-medium leading-relaxed italic text-lg opacity-80">
-                  "{selectedComplaint.desc || 'Operational anomaly reported.'}"
+                  "{selectedComplaint.description || selectedComplaint.desc || 'Operational anomaly reported.'}"
                 </p>
               </div>
 
-              {selectedComplaint.needsFeedback && (
+              {selectedComplaint.status === 'resolved' && (
                 <div className="p-10 bg-primary/5 rounded-3xl border-2 border-primary/20 relative group/feedback overflow-hidden">
                   <div className="absolute top-0 right-0 p-6 opacity-10 group-hover/feedback:opacity-20 transition-opacity">
                     <Star size={100} strokeWidth={1} />

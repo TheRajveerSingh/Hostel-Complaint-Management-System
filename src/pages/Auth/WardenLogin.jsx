@@ -14,21 +14,22 @@ export default function WardenLogin() {
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
+    email: '',
     hostel_id: '',
     warden_id: '',
     password: ''
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     
     try {
       if (isLogin) {
-        authService.login(formData.warden_id, formData.password, 'warden');
+        await authService.login(formData.email, formData.password, 'warden');
         navigate('/warden/dashboard');
       } else {
-        authService.register({ ...formData, role: 'warden' });
+        await authService.register({ ...formData, role: 'warden' });
         setError('Registration successful! Please login.');
         setIsLogin(true);
       }
@@ -98,12 +99,13 @@ export default function WardenLogin() {
             )}
             
             <Input 
-              label="Warden ID" 
-              icon={Hash}
-              placeholder="e.g. W-045" 
+              label="Email Address" 
+              type="email"
+              icon={User}
+              placeholder="e.g. warden@hostel.edu" 
               containerClassName={!isLogin ? '' : 'animate-in slide-in-from-top-4 duration-500'}
-              value={formData.warden_id}
-              onChange={e => setFormData({...formData, warden_id: e.target.value})}
+              value={formData.email}
+              onChange={e => setFormData({...formData, email: e.target.value})}
               required 
             />
             

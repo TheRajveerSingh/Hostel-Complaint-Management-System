@@ -5,8 +5,9 @@ import { Card, CardHeader } from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import Button from '../../components/ui/Button';
-import { HOSTELS } from '../../constants/hostels';
-import { 
+import { supabase } from '../../lib/supabase';
+import { authService } from '../../lib/auth';
+import {
   ArrowLeft, 
   Zap, 
   Droplet, 
@@ -54,10 +55,32 @@ export default function NewComplaint() {
     { id: 'new', label: 'Raise Issue', path: '/student/new-complaint', icon: Plus }
   ];
 
-  const handleSubmit = (e, isEmergency = false) => {
+  const handleSubmit = async (e, isEmergency = false) => {
     e.preventDefault();
-    console.log("Submitting:", { ...formData, isEmergency });
-    navigate('/student/dashboard');
+    const currentUser = authService.getCurrentUser();
+    
+    if (!formData.category) {
+      alert("Please select a classification category.");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('complaints').insert([{
+        student_id: currentUser.id,
+        hostel_id: currentUser.hostel_id,
+        category: formData.category,
+        location: formData.location,
+        description: formData.description,
+        severity: formData.severity,
+        is_emergency: isEmergency
+      }]);
+      
+      if (error) throw error;
+      navigate('/student/dashboard');
+    } catch (error) {
+      console.error('Submission failed:', error);
+      alert('Failed to transmit grievance');
+    }
   };
 
   return (
@@ -106,39 +129,39 @@ export default function NewComplaint() {
                       type="button"
                       onClick={() => setFormData({...formData, category: cat.id})}
                       style={{ 
-                        borderColor: isActive ? cat.color : '',
-                        boxShadow: isActive ? `0 0 25px ${cat.color}30` : ''
+                        borderColor: isActive ? cat.color : `${cat.color}40`,
+                        boxShadow: isActive ? `0 0 35px ${cat.color}50` : `0 0 25px ${cat.color}20`
                       }}
                       className={`
                         group relative p-8 rounded-[2rem] border-2 transition-all duration-500 flex flex-col items-center gap-5 overflow-hidden
                         ${isActive 
-                          ? `bg-surface-container-high border-primary scale-[1.02] ring-8 ring-white/5` 
-                          : `bg-surface-container-low border-outline/5 text-on-surface-variant hover:bg-surface-container-high`
+                          ? `bg-surface-container-high scale-[1.02] ring-8 ring-white/5` 
+                          : `bg-surface-container-low hover:bg-surface-container-high`
                         }
                       `}
                     >
                       {/* Accent Glow Background */}
-                      {isActive && (
+                      {(isActive || true) && (
                         <div 
-                          className="absolute inset-0 opacity-10 animate-pulse pointer-events-none"
+                          className={`absolute inset-0 transition-opacity duration-500 pointer-events-none ${isActive ? 'opacity-10 animate-pulse' : 'opacity-[0.03]'}`}
                           style={{ background: `radial-gradient(circle at center, ${cat.color} 0%, transparent 70%)` }}
                         />
                       )}
                       
                       <div className={`
                         p-5 rounded-2xl transition-all duration-500 relative
-                        ${isActive ? 'bg-surface shadow-inner' : 'bg-surface opacity-40 group-hover:opacity-100 group-hover:scale-110'}
+                        ${isActive ? 'bg-surface shadow-inner' : 'bg-surface shadow-sm group-hover:scale-110'}
                       `}>
-                        <Icon size={28} strokeWidth={isActive ? 3 : 2.5} style={{ color: isActive ? cat.color : '' }} />
+                        <Icon size={28} strokeWidth={isActive ? 3 : 2.5} style={{ color: cat.color }} />
                         
                         {/* Emoji Overlay */}
-                        <div className="absolute -top-2 -right-2 text-xl drop-shadow-lg">
+                        <div className="absolute -top-2 -right-2 text-xl drop-shadow-lg opacity-80 group-hover:opacity-100 transition-opacity">
                           {cat.emoji}
                         </div>
                       </div>
 
                       <div className="flex flex-col items-center gap-1">
-                        <span className={`text-[10px] font-black uppercase tracking-[0.25em] transition-all duration-300 ${isActive ? 'opacity-100' : 'opacity-40 group-hover:opacity-100'}`}>
+                        <span className={`text-[10px] font-black uppercase tracking-[0.25em] transition-all duration-300 ${isActive ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`} style={{ color: isActive ? cat.color : 'inherit' }}>
                           {cat.id}
                         </span>
                         {isActive && (
@@ -161,14 +184,16 @@ export default function NewComplaint() {
               </div>
 
               <div className="grid grid-cols-1 gap-8">
-                <Select 
-                  label="Hostel Block" 
-                  icon={MapPin}
-                  options={HOSTELS}
-                  value={formData.location}
-                  onChange={e => setFormData({...formData, location: e.target.value})}
-                  required
-                />
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-[0.25em] text-on-surface-variant/50 ml-1 block">Specific Location</label>
+                  <Input 
+                    placeholder="e.g. Room 420, 2nd Floor Washroom" 
+                    icon={MapPin}
+                    value={formData.location}
+                    onChange={e => setFormData({...formData, location: e.target.value})}
+                    required
+                  />
+                </div>
                 
                 <div className="space-y-3">
                   <label className="text-[10px] font-black uppercase tracking-[0.25em] text-on-surface-variant/50 ml-1 block">Detailed Description</label>

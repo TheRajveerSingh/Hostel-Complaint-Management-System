@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PortalLayout from '../../layouts/PortalLayout';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
@@ -22,27 +22,46 @@ import {
   Sparkles
 } from 'lucide-react';
 
-const assignedTasks = [
-  { id: 'C-1042', category: 'Plumbing', location: 'Bathroom 2nd Floor', priority: 'Normal', status: 'In Progress', timestamp: '2h ago' },
-  { id: 'C-1047', category: 'Plumbing', location: 'Mess Sink', priority: 'High', status: 'Pending', timestamp: '15m ago' }
-];
+import { supabase } from '../../lib/supabase';
+import { authService } from '../../lib/auth';
 
 export default function StaffDashboard() {
   const navigate = useNavigate();
+  const currentUser = authService.getCurrentUser();
+
+  const [assignedTasks, setAssignedTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      if (!currentUser) return;
+      
+      const { data } = await supabase
+        .from('complaints')
+        .select('*')
+        .eq('assigned_to', currentUser.id)
+        .neq('status', 'resolved') // Only show active tasks in queue
+        .order('created_at', { ascending: false });
+
+      if (data) setAssignedTasks(data);
+      setLoading(false);
+    };
+
+    fetchTasks();
+  }, [currentUser]);
 
   const menuItems = [
     { id: 'tasks', label: 'My Queue', path: '/staff/dashboard', icon: ClipboardList },
     { id: 'history', label: 'Resolution Log', path: '/staff/history', icon: History }
   ];
 
-  const pending = assignedTasks.filter(t => t.status === 'Pending').length;
-  const inProgress = assignedTasks.filter(t => t.status === 'In Progress').length;
-  const resolved = 12; // Mock total resolved today
+  const pending = assignedTasks.filter(t => t.status === 'pending').length;
+  const inProgress = assignedTasks.filter(t => t.status === 'in_progress').length;
 
   const stats = [
     { label: 'Pending Duty', value: pending, color: 'text-tertiary', icon: Clock, bg: 'bg-tertiary/5' },
     { label: 'Active Repairs', value: inProgress, color: 'text-secondary', icon: TrendingUp, bg: 'bg-secondary/5' },
-    { label: 'Resolved Today', value: resolved, color: 'text-success', icon: CheckCircle2, bg: 'bg-success/5' }
+    { label: 'Queue Load', value: assignedTasks.length, color: 'text-primary', icon: Activity, bg: 'bg-primary/5' }
   ];
 
   return (
@@ -118,13 +137,17 @@ export default function StaffDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline/5">
-              {assignedTasks.map((t, idx) => (
+              {loading ? (
+                <tr><td colSpan="5" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">Syncing with Central Command...</td></tr>
+              ) : assignedTasks.length === 0 ? (
+                <tr><td colSpan="5" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">No assignments active in your queue.</td></tr>
+              ) : assignedTasks.map((t) => (
                 <tr key={t.id} className="hover:bg-secondary/[0.03] transition-all duration-300 group">
                   <td className="px-10 py-8">
                     <div className="flex items-center gap-4">
                       <div className="w-1.5 h-6 bg-secondary/20 rounded-full group-hover:bg-secondary transition-colors" />
                       <span className="font-black text-sm text-on-surface tracking-widest">
-                        {t.id}
+                        {t.id.substring(0,8).toUpperCase()}
                       </span>
                     </div>
                   </td>
@@ -135,12 +158,12 @@ export default function StaffDashboard() {
                         <span className="text-sm font-black text-on-surface tracking-tight uppercase">{t.location}</span>
                       </div>
                       <span className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest opacity-60 flex items-center gap-2">
-                        {t.category} • {t.timestamp}
+                        {t.category} • {new Date(t.created_at).toLocaleDateString()}
                       </span>
                     </div>
                   </td>
                   <td className="px-10 py-8">
-                    {t.priority === 'High' ? (
+                    {t.is_emergency ? (
                       <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-tertiary/10 text-tertiary border border-tertiary/20 rounded-lg text-[10px] font-black uppercase tracking-widest animate-pulse">
                         <AlertTriangle size={12} strokeWidth={3} />
                         Priority

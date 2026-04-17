@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { HOSTELS } from '../../constants/hostels';
 import PortalLayout from '../../layouts/PortalLayout';
 import { Card, CardHeader } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -16,7 +18,9 @@ import {
   ArrowRight,
   Sparkles,
   LayoutGrid,
-  Settings2
+  Trash2,
+  Settings2,
+  MapPin
 } from 'lucide-react';
 
 const tabs = [
@@ -27,7 +31,55 @@ const tabs = [
 ];
 
 export default function SupervisorDashboard() {
-  const [activeTab, setActiveTab] = useState('Hostels');
+  const [activeTab, setActiveTab] = useState('Students');
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedHostel, setSelectedHostel] = useState('All');
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    let query = supabase.from('users').select('*');
+    
+    // Convert activeTab to role (e.g. 'Students' -> 'student')
+    const roleMap = {
+      'Students': 'student',
+      'Wardens': 'warden',
+      'Staff': 'staff'
+    };
+    
+    if (roleMap[activeTab]) {
+      query = query.eq('role', roleMap[activeTab]);
+    }
+    
+    // Filter by hostel if not 'All' and not viewing global Staff
+    if (selectedHostel !== 'All' && activeTab !== 'Staff') {
+      query = query.eq('hostel_id', selectedHostel);
+    }
+    
+    const { data } = await query;
+    if (data) setUsers(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'Hostels') {
+      setUsers([]);
+      setLoading(false);
+      return;
+    }
+    fetchUsers();
+  }, [activeTab, selectedHostel]);
+
+  const handleDeleteUser = async (id) => {
+    if (!window.confirm("CONFIRMATION: Revoke user access permanently?")) return;
+    try {
+      const { error } = await supabase.from('users').delete().eq('id', id);
+      if (error) throw error;
+      setUsers(users.filter(u => u.id !== id));
+    } catch(e) {
+      alert("Failed to delete user.");
+    }
+  };
 
   const menuItems = [
     { id: 'dashboard', label: 'Master Arch', path: '/supervisor/dashboard', icon: Database },
@@ -51,10 +103,14 @@ export default function SupervisorDashboard() {
           </p>
         </div>
         <div className="flex gap-4">
-          <Button variant="secondary" className="font-black uppercase text-xs tracking-widest gap-2 shadow-none border border-outline/10 h-14">
-            <Upload size={18} strokeWidth={2.5} />
-            Import
-          </Button>
+          <select 
+            value={selectedHostel}
+            onChange={(e) => setSelectedHostel(e.target.value)}
+            className="bg-surface-container-low border border-outline/10 text-on-surface text-xs font-black uppercase tracking-widest rounded-xl px-4 py-4 outline-none focus:border-primary/40 transition-all cursor-pointer"
+          >
+            <option value="All">Global Matrix (All Hostels)</option>
+            {HOSTELS.map(h => <option key={h} value={h}>{h}</option>)}
+          </select>
           <Button className="font-black uppercase text-xs tracking-widest gap-2 shadow-2xl shadow-primary/30 h-14 px-8">
             <Download size={18} strokeWidth={2.5} />
             Export
@@ -100,46 +156,72 @@ export default function SupervisorDashboard() {
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center text-center py-32 px-10 relative overflow-hidden">
-          {/* Abstract background for empty state */}
-          <div className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none">
-            <Database size={600} strokeWidth={0.5} className="text-on-surface absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-          </div>
-
-          <div className="relative z-10 space-y-10 max-w-xl">
-            <div className="inline-flex p-8 bg-surface-container-low text-on-surface-variant/20 rounded-[3rem] border border-outline/5 shadow-inner">
-              <Database size={80} strokeWidth={1} className="animate-pulse" />
+        {activeTab === 'Hostels' ? (
+          <div className="flex flex-col items-center justify-center text-center py-32 px-10 relative overflow-hidden">
+            <div className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none">
+              <Database size={600} strokeWidth={0.5} className="text-on-surface absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
             </div>
-            
-            <div className="space-y-4">
-              <h3 className="display-font text-3xl font-black text-on-surface tracking-tighter uppercase leading-none">
-                Data Stream <span className="text-primary">Standby.</span>
-              </h3>
-              <p className="text-on-surface-variant font-medium text-lg leading-relaxed opacity-60">
-                The <span className="text-primary font-black">{activeTab}</span> configuration matrix is waiting for an active Supabase session synchronization.
-              </p>
-            </div>
-
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-              <Button size="lg" className="w-full md:w-auto px-10 py-5 text-[10px] font-black uppercase tracking-[0.3em] shadow-2xl shadow-primary/30">
-                Force Sync Data
-              </Button>
-              <Button variant="secondary" size="lg" className="w-full md:w-auto px-10 py-5 text-[10px] font-black uppercase tracking-[0.3em] border border-outline/10 group">
-                <Plus size={18} strokeWidth={3} className="text-primary group-hover:rotate-90 transition-transform duration-500" />
-                Manual Entry
-              </Button>
+            <div className="relative z-10 space-y-10 max-w-xl">
+              <div className="space-y-4">
+                <h3 className="display-font text-3xl font-black text-on-surface tracking-tighter uppercase leading-none">
+                  Facility Matrix <span className="text-primary">Secured.</span>
+                </h3>
+                <p className="text-on-surface-variant font-medium text-lg leading-relaxed opacity-60">
+                  Select a personnel tab above to actively manage the access credentials and assignments across all hostel sectors.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-primary/[0.02]">
+                  <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Sys ID</th>
+                  <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Name & Designation</th>
+                  <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Assigned Node</th>
+                  <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline/5 font-medium">
+                {loading ? (
+                   <tr><td colSpan="4" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">Synchronizing Table...</td></tr>
+                ) : users.length === 0 ? (
+                   <tr><td colSpan="4" className="px-10 py-8 text-center text-error font-bold text-sm">No profiles found for {activeTab}.</td></tr>
+                ) : users.map(user => (
+                   <tr key={user.id} className="hover:bg-primary/[0.03] transition-colors group">
+                     <td className="px-10 py-8 font-black text-sm text-on-surface tracking-widest">{user.id.substring(0,8).toUpperCase()}</td>
+                     <td className="px-10 py-8">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-black text-on-surface tracking-tight uppercase">{user.name}</span>
+                          <span className="text-[10px] text-primary font-black uppercase tracking-widest">{user.email}</span>
+                        </div>
+                     </td>
+                     <td className="px-10 py-8 flex items-center gap-2">
+                        <MapPin size={12} className="text-on-surface-variant/50" />
+                        <span className="text-xs font-black text-on-surface-variant uppercase">{user.hostel_id || 'Global / N/A'}</span>
+                     </td>
+                     <td className="px-10 py-8 text-right">
+                        <Button onClick={() => handleDeleteUser(user.id)} variant="danger" className="bg-error text-white text-[10px] tracking-widest font-black uppercase py-2 px-4 shadow-xl shadow-error/20 gap-2">
+                           <Trash2 size={12} strokeWidth={3} />
+                           Revoke
+                        </Button>
+                     </td>
+                   </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         <div className="px-10 py-6 bg-surface-container-highest/50 flex items-center justify-between border-t border-outline/5">
           <div className="flex items-center gap-3">
             <Sparkles size={14} className="text-primary" />
-            <span className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Awaiting cloud integration</span>
+            <span className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Active Data Link</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-on-surface-variant/20 animate-pulse" />
-            <span className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Offline Registry Mod</span>
+            <div className={`w-2 h-2 rounded-full ${loading ? 'bg-error animate-pulse' : 'bg-success'}`} />
+            <span className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">{loading ? 'Fetching' : 'Synchronized'}</span>
           </div>
         </div>
       </Card>
