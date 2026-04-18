@@ -26,7 +26,11 @@ import {
   Home,
   Palette,
   Wrench,
-  Sparkles
+  Sparkles,
+  Camera,
+  ImagePlus,
+  X as XIcon,
+  Image as ImageIcon
 } from 'lucide-react';
 
 const categories = [
@@ -49,6 +53,65 @@ export default function NewComplaint() {
     description: '',
     severity: 'normal'
   });
+  const [photos, setPhotos] = useState([]);
+  const [showCamera, setShowCamera] = useState(false);
+  const videoRef = React.useRef(null);
+  const streamRef = React.useRef(null);
+
+  const handleFileUpload = (e) => {
+    const files = Array.from(e.target.files);
+    if (photos.length + files.length > 3) {
+      alert('Maximum 3 photos allowed.');
+      return;
+    }
+    files.forEach(file => {
+      if (file.size > 2 * 1024 * 1024) {
+        alert(`"${file.name}" exceeds 2MB. Skipped.`);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => setPhotos(prev => [...prev, reader.result]);
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+
+  const startCamera = async () => {
+    setShowCamera(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      alert('Camera access denied or unavailable.');
+      setShowCamera(false);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+    setPhotos(prev => [...prev, dataUrl]);
+    stopCamera();
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setShowCamera(false);
+  };
+
+  const removePhoto = (index) => {
+    setPhotos(prev => prev.filter((_, i) => i !== index));
+  };
 
   const menuItems = [
     { id: 'dashboard', label: 'Overview', path: '/student/dashboard', icon: LayoutGrid },
@@ -72,7 +135,8 @@ export default function NewComplaint() {
         location: formData.location,
         description: formData.description,
         severity: formData.severity,
-        is_emergency: isEmergency
+        is_emergency: isEmergency,
+        photos: photos.length > 0 ? photos : []
       }]);
       
       if (error) throw error;
@@ -220,13 +284,103 @@ export default function NewComplaint() {
               </div>
             </div>
 
+            {/* Photo Evidence */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 border-b border-outline/10 pb-4">
+                <div className="p-2.5 bg-success/10 text-success rounded-xl">
+                  <ImageIcon size={20} strokeWidth={3} />
+                </div>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-success">3. Visual Evidence (Optional)</h3>
+              </div>
+
+              {/* Photo Previews */}
+              {photos.length > 0 && (
+                <div className="flex gap-4 flex-wrap">
+                  {photos.map((photo, idx) => (
+                    <div key={idx} className="relative w-28 h-28 rounded-2xl overflow-hidden border-2 border-outline/10 group shadow-lg">
+                      <img src={photo} alt={`Evidence ${idx + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(idx)}
+                        className="absolute top-1 right-1 w-6 h-6 bg-error text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl"
+                      >
+                        <XIcon size={12} strokeWidth={3} />
+                      </button>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[8px] font-black uppercase tracking-widest text-center py-1">
+                        Photo {idx + 1}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Camera Modal */}
+              {showCamera && (
+                <div className="relative rounded-3xl overflow-hidden bg-black border-2 border-success/30 shadow-2xl">
+                  <video ref={videoRef} autoPlay playsInline className="w-full h-64 object-cover" />
+                  <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-4 p-4 bg-gradient-to-t from-black/80 to-transparent">
+                    <Button
+                      type="button"
+                      onClick={capturePhoto}
+                      className="py-3 px-8 bg-success text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-success/40 gap-2"
+                    >
+                      <Camera size={16} strokeWidth={3} />
+                      Capture
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={stopCamera}
+                      variant="secondary"
+                      className="py-3 px-6 text-[10px] font-black uppercase tracking-widest border border-white/20 text-white shadow-none"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Upload Actions */}
+              {photos.length < 3 && !showCamera && (
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={startCamera}
+                    className="flex-1 flex flex-col items-center justify-center gap-3 p-8 bg-surface-container-low border-2 border-dashed border-success/20 rounded-2xl hover:border-success/50 hover:bg-success/5 transition-all duration-500 group cursor-pointer"
+                  >
+                    <div className="p-4 rounded-2xl bg-success/10 text-success group-hover:scale-110 transition-transform">
+                      <Camera size={28} strokeWidth={2} />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-success/70 group-hover:text-success transition-colors">Open Camera</span>
+                  </button>
+
+                  <label className="flex-1 flex flex-col items-center justify-center gap-3 p-8 bg-surface-container-low border-2 border-dashed border-primary/20 rounded-2xl hover:border-primary/50 hover:bg-primary/5 transition-all duration-500 group cursor-pointer">
+                    <div className="p-4 rounded-2xl bg-primary/10 text-primary group-hover:scale-110 transition-transform">
+                      <ImagePlus size={28} strokeWidth={2} />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-primary/70 group-hover:text-primary transition-colors">Browse Device</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              )}
+
+              <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest text-center">
+                Max 3 photos • 2MB each • JPG/PNG supported
+              </p>
+            </div>
+
             {/* Severity Selection */}
             <div className="space-y-6">
               <div className="flex items-center gap-4 border-b border-outline/10 pb-4">
                 <div className="p-2.5 bg-tertiary/10 text-tertiary rounded-xl">
                   <AlertTriangle size={20} strokeWidth={3} />
                 </div>
-                <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-tertiary">3. Criticality</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-tertiary">4. Criticality</h3>
               </div>
               
               <div className="flex flex-wrap gap-3 bg-surface-container-low p-2 rounded-2xl border-2 border-outline/5 w-fit">

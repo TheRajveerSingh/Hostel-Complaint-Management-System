@@ -3,12 +3,77 @@ import { supabase } from './supabase';
 const SESSION_KEY = 'hostel_care_session';
 
 export const authService = {
+  // Supervisor Login
+  supervisorLogin: async (email, password) => {
+    try {
+      // Query supervisor credentials
+      const { data, error } = await supabase
+        .from('supervisor_credentials')
+        .select('id, username, password_hash')
+        .eq('username', email)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Supervisor login error:', error);
+        throw new Error('Database connection error. Please ensure supervisor_credentials table exists: ' + (error.message || 'Unknown error'));
+      }
+
+      if (!data) {
+        throw new Error('Supervisor account not found. Please check your email.');
+      }
+
+      // Simple password verification (in production, use bcrypt)
+      if (data.password_hash !== password) {
+        throw new Error('Incorrect password');
+      }
+
+      // Create session for supervisor
+      const sessionData = {
+        id: data.id,
+        email: email,
+        role: 'supervisor',
+        name: 'Supervisor Admin'
+      };
+      
+      localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+      return sessionData;
+    } catch (error) {
+      console.error('Supervisor login exception:', error);
+      throw new Error(error.message || 'Supervisor login failed');
+    }
+  },
+
   // Register a new user
   register: async (userData) => {
     try {
+      // Check for duplicate email across all user types
+      const email = userData.email || userData.college_email;
+      
+      // Check if email exists in any user table via Supabase Auth or users table
+      const { data: existingAuthUser } = await supabase.auth.admin.listUsers();
+      const authUserExists = existingAuthUser?.users?.some(u => u.email === email);
+      
+      if (authUserExists) {
+        throw new Error('An account with this email already exists. Please login instead.');
+      }
+
+      // Also check in users table if it exists
+      try {
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
+        if (existingUser) {
+          throw new Error('An account with this email already exists. Please login instead.');
+        }
+      } catch (e) {
+        // Users table might not exist, continue
+      }
+
       // Register with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userData.email,
+        email: email,
         password: userData.password,
       });
 
@@ -20,7 +85,7 @@ export const authService = {
         .insert([
           {
             id: authData.user.id,
-            email: userData.email,
+            email: email,
             role: userData.role,
             registration_number: userData.registration_number,
             staff_id: userData.staff_id,
@@ -29,6 +94,7 @@ export const authService = {
             name: userData.name,
             hostel_id: userData.hostel_id,
             category: userData.category,
+            photo_url: userData.photo_url || null,
           }
         ])
         .select();

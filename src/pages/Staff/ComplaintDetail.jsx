@@ -64,6 +64,12 @@ export default function StaffComplaintDetail() {
 
   const updateStatus = async (newStatus) => {
     try {
+      // Require photo for resolution
+      if (newStatus === 'resolved' && !imageBase64) {
+        alert('A photo of the resolved area is required before marking this complaint as resolved.');
+        return;
+      }
+
       let finalDescription = complaint.description;
       // Clean previous staff log injections if present to avoid duplicating
       if (finalDescription && finalDescription.includes('--- STAFF LOG ---')) {
@@ -75,7 +81,7 @@ export default function StaffComplaintDetail() {
       }
 
       setComplaint({...complaint, status: newStatus, description: finalDescription});
-      await supabase.from('complaints').update({ status: newStatus, description: finalDescription }).eq('id', id);
+      await supabase.from('complaints').update({ status: newStatus, description: finalDescription, resolved_at: new Date().toISOString() }).eq('id', id);
       alert(newStatus === 'resolved' ? "Task resolved. Documentation sent to Operations." : "Status updated.");
     } catch (e) {
       console.error(e);
@@ -89,8 +95,13 @@ export default function StaffComplaintDetail() {
 
   if (loading) return (
     <PortalLayout menuItems={menuItems} roleName="Staff">
-      <div className="flex justify-center items-center h-[60vh] text-on-surface-variant font-black">
-        Syncing Task Specifications...
+      <div className="flex justify-center items-center h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin">
+            <Hammer size={40} strokeWidth={2} className="text-secondary" />
+          </div>
+          <span className="text-on-surface-variant font-black">Loading task details...</span>
+        </div>
       </div>
     </PortalLayout>
   );
@@ -187,23 +198,36 @@ export default function StaffComplaintDetail() {
               <div className="space-y-6">
                 <div className="flex items-center gap-3 text-on-surface-variant font-black uppercase text-[10px] tracking-widest border-b border-outline/5 pb-4">
                   <ImageIcon size={16} strokeWidth={3} />
-                  Visual Documentation
+                  Resident's Evidence Documentation
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {[1, 2].map((i) => (
-                    <div key={i} className="aspect-square bg-surface-container-high rounded-2xl border-2 border-outline/5 flex flex-col items-center justify-center gap-3 group hover:border-secondary transition-all cursor-pointer overflow-hidden relative">
-                      <div className="absolute inset-0 bg-secondary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <ImageIcon className="text-on-surface-variant group-hover:text-secondary group-hover:scale-110 transition-all" size={24} strokeWidth={1.5} />
-                      <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant">View Evidence</span>
-                    </div>
-                  ))}
-                  <div className="aspect-square bg-surface-container-low rounded-2xl border border-dashed border-outline/20 flex flex-col items-center justify-center gap-3 opacity-40">
-                    <ImageIcon size={24} strokeWidth={1.5} />
+                {complaint.photos && complaint.photos.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {complaint.photos.map((photo, idx) => (
+                      <div key={idx} className="group relative">
+                        <div className="aspect-square bg-surface-container-high rounded-2xl border border-outline/5 flex items-center justify-center overflow-hidden hover:border-primary transition-all hover:shadow-lg hover:shadow-primary/20">
+                          <img 
+                            src={photo}
+                            alt={`Evidence ${idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <span className="text-[8px] font-black uppercase text-primary bg-white/80 px-2 py-1 rounded-lg">Photo {idx + 1}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {[...Array(Math.max(0, 4 - complaint.photos.length))].map((_, i) => (
+                      <div key={`empty-${i}`} className="aspect-square bg-surface-container-low rounded-2xl border border-dashed border-outline/20 flex flex-col items-center justify-center gap-3 opacity-40">
+                        <ImageIcon size={24} strokeWidth={1.5} />
+                      </div>
+                    ))}
                   </div>
-                  <div className="aspect-square bg-surface-container-low rounded-2xl border border-dashed border-outline/20 flex flex-col items-center justify-center gap-3 opacity-40">
-                    <ImageIcon size={24} strokeWidth={1.5} />
+                ) : (
+                  <div className="p-8 text-center rounded-2xl border border-dashed border-outline/20 opacity-50">
+                    <ImageIcon size={24} strokeWidth={1.5} className="mx-auto mb-2 opacity-50" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">No evidence photos uploaded</span>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </Card>
@@ -238,17 +262,25 @@ export default function StaffComplaintDetail() {
                 
                 <button 
                   onClick={() => updateStatus('resolved')}
+                  disabled={!imageBase64}
                   className={`
                     w-full p-6 rounded-2xl transition-all duration-500 flex items-center justify-between group/btn
                     ${complaint.status === 'resolved' 
                       ? 'bg-success text-white shadow-xl shadow-success/30 ring-4 ring-success/10' 
-                      : 'bg-surface-container-low border border-outline/5 text-on-surface-variant hover:border-success/40'
+                      : imageBase64
+                      ? 'bg-surface-container-low border border-outline/5 text-on-surface-variant hover:border-success/40 cursor-pointer'
+                      : 'bg-surface-container-low/50 border border-outline/5 text-on-surface-variant/50 cursor-not-allowed opacity-60'
                     }
                   `}
                 >
                   <div className="flex items-center gap-4">
                     <CheckCircle2 size={20} strokeWidth={3} />
-                    <span className="text-xs font-black uppercase tracking-widest">Resolved</span>
+                    <div className="text-left">
+                      <span className="text-xs font-black uppercase tracking-widest block">Resolved</span>
+                      {!imageBase64 && complaint.status !== 'resolved' && (
+                        <span className="text-[8px] font-black uppercase text-warn/70 tracking-widest block mt-1">⚠ Requires Photo</span>
+                      )}
+                    </div>
                   </div>
                   <ChevronRight size={16} strokeWidth={4} className={complaint.status === 'resolved' ? 'opacity-100' : 'opacity-0'} />
                 </button>
@@ -307,9 +339,14 @@ export default function StaffComplaintDetail() {
 
                 <Button 
                   onClick={() => updateStatus('resolved')}
-                  className="w-full py-4 text-[10px] font-black uppercase tracking-[0.2em] bg-secondary hover:bg-secondary/90 shadow-xl shadow-secondary/30"
+                  disabled={!imageBase64}
+                  className={`w-full py-4 text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-secondary/30 ${
+                    imageBase64
+                      ? 'bg-secondary hover:bg-secondary/90 text-white'
+                      : 'bg-surface-container-low text-on-surface-variant/50 cursor-not-allowed opacity-60'
+                  }`}
                 >
-                  Confirm & Sync Log
+                  {imageBase64 ? 'Confirm & Sync Log' : '⚠ Requires Photo Upload'}
                 </Button>
               </Card>
           </div>

@@ -41,7 +41,7 @@ export default function WardenCompletedTasks() {
       .select('*')
       .eq('hostel_id', wardenHostel)
       .eq('status', 'resolved')
-      .order('updated_at', { ascending: false });
+      .order('resolved_at', { ascending: false });
       
     // Fetch Feedbacks
     const { data: fData } = await supabase.from('feedback').select('*');
@@ -84,7 +84,7 @@ export default function WardenCompletedTasks() {
     location: c.location,
     category: c.category,
     specialist: usersMap[c.assigned_to] || 'Unknown',
-    resolutionDate: new Date(c.updated_at).toLocaleDateString(),
+    resolutionDate: c.resolved_at ? new Date(c.resolved_at).toLocaleDateString() : new Date(c.updated_at).toLocaleDateString(),
     feedbackRating: feedbacks[c.id] ? `${feedbacks[c.id].rating}/5` : 'Pending'
   }));
 
@@ -175,6 +175,7 @@ export default function WardenCompletedTasks() {
               <tr className="bg-success/[0.02]">
                 <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Ref ID</th>
                 <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Details</th>
+                <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Reporter</th>
                 <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Specialist</th>
                 <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Feedback Status</th>
                 <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black text-right">Audit Record</th>
@@ -184,9 +185,9 @@ export default function WardenCompletedTasks() {
               {loading ? (
                 <tr><td colSpan="5" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">Validating ledgers...</td></tr>
               ) : filteredTasks.length === 0 ? (
-                <tr><td colSpan="5" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">No resolved operational data found.</td></tr>
+                <tr><td colSpan="6" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">No resolved operational data found.</td></tr>
               ) : filteredTasks.map((c) => (
-                <tr key={c.id} className="hover:bg-success/[0.03] transition-all duration-300 group">
+                <tr key={c.id} className="hover:bg-success/[0.03] transition-all duration-300 group" colSpan="6">
                   <td className="px-10 py-8">
                     <div className="flex items-center gap-4">
                       <div className="w-1.5 h-6 rounded-full bg-success/20 group-hover:bg-success transition-colors" />
@@ -200,6 +201,12 @@ export default function WardenCompletedTasks() {
                         <MapPin size={10} strokeWidth={3} className="text-success" />
                         {c.location}
                       </span>
+                    </div>
+                  </td>
+                  <td className="px-10 py-8">
+                    <div className="text-xs font-black text-on-surface uppercase tracking-widest">
+                      <div>{usersMap[c.student_id] || 'Unknown'}</div>
+                      <span className="text-[10px] text-on-surface-variant opacity-60">Reporter</span>
                     </div>
                   </td>
                   <td className="px-10 py-8">
@@ -254,7 +261,7 @@ export default function WardenCompletedTasks() {
                   <div className="flex items-center gap-2">
                     <Calendar size={12} className="text-success" />
                     <span className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">
-                       Completed on {new Date(selectedAudit.updated_at).toLocaleString()}
+                       Completed on {selectedAudit.resolved_at ? new Date(selectedAudit.resolved_at).toLocaleString() : new Date(selectedAudit.updated_at).toLocaleString()}
                     </span>
                   </div>
                </div>

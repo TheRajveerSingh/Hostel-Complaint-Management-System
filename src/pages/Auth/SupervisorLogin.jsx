@@ -20,7 +20,7 @@ export default function SupervisorLogin() {
     setError('');
     
     try {
-      await authService.login(formData.email, formData.secret_key, 'supervisor');
+      await authService.supervisorLogin(formData.email, formData.secret_key);
       navigate('/supervisor/dashboard');
     } catch (err) {
       setError(err.message);

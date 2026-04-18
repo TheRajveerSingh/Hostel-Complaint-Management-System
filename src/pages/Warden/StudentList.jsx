@@ -3,6 +3,7 @@ import PortalLayout from '../../layouts/PortalLayout';
 import { Card, CardHeader } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import ExportDropdown from '../../components/ui/ExportDropdown';
+import UserDetailModal from '../../components/ui/UserDetailModal';
 import { supabase } from '../../lib/supabase';
 import { authService } from '../../lib/auth';
 import { 
@@ -26,6 +27,7 @@ export default function WardenStudentList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState({ total: 0, activeLogs: 0, newThisMonth: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedStudent, setSelectedStudent] = useState(null);
 
   const exportColumns = [
     { header: 'Name', dataKey: 'name' },
@@ -188,11 +190,22 @@ export default function WardenStudentList() {
                 {filteredStudents.map((s) => (
                   <tr key={s.id} className="hover:bg-primary/[0.03] transition-all duration-300 group">
                     <td className="px-10 py-8">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs group-hover:scale-110 transition-transform">
-                          {s.name ? s.name.substring(0, 2).toUpperCase() : '??'}
-                        </div>
-                        <span className="font-black text-sm text-on-surface tracking-tight uppercase">
+                      <div 
+                        className="flex items-center gap-4 cursor-pointer group"
+                        onClick={() => setSelectedStudent(s)}
+                      >
+                        {s.photo_url ? (
+                          <img 
+                            src={s.photo_url} 
+                            alt={s.name}
+                            className="w-10 h-10 rounded-full object-cover border border-outline/20 group-hover:scale-110 transition-transform"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs group-hover:scale-110 transition-transform">
+                            {s.name ? s.name.substring(0, 2).toUpperCase() : '??'}
+                          </div>
+                        )}
+                        <span className="font-black text-sm text-on-surface tracking-tight uppercase group-hover:text-primary transition-colors">
                           {s.name || 'Unknown'}
                         </span>
                       </div>
@@ -238,6 +251,9 @@ export default function WardenStudentList() {
         </div>
       </Card>
       
+      {/* User Detail Modal */}
+      <UserDetailModal user={selectedStudent} onClose={() => setSelectedStudent(null)} />
+
       {/* Decorative ambient background */}
       <div className="fixed top-0 right-0 w-[40%] h-[40%] bg-primary/5 blur-[160px] pointer-events-none z-[-1]" />
     </PortalLayout>

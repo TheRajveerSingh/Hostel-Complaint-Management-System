@@ -5,6 +5,7 @@ import PortalLayout from '../../layouts/PortalLayout';
 import { Card, CardHeader } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import ExportDropdown from '../../components/ui/ExportDropdown';
+import UserDetailModal from '../../components/ui/UserDetailModal';
 import { 
   Database, 
   Users, 
@@ -20,7 +21,8 @@ import {
   Sparkles,
   LayoutGrid,
   Trash2,
-  MapPin
+  MapPin,
+  Activity
 } from 'lucide-react';
 
 const tabs = [
@@ -35,6 +37,7 @@ export default function SupervisorDashboard() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedHostel, setSelectedHostel] = useState('All');
+  const [selectedUser, setSelectedUser] = useState(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -188,38 +191,79 @@ export default function SupervisorDashboard() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-primary/[0.02]">
-                  <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Sys ID</th>
                   <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Name & Designation</th>
+                  <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">
+                    {activeTab === 'Students' ? 'Reg Number' : activeTab === 'Wardens' ? 'Warden ID' : 'Staff ID'}
+                  </th>
+                  <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Email</th>
                   <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black">Assigned Node</th>
                   <th className="px-10 py-6 text-[10px] tracking-[0.25em] uppercase text-on-surface-variant font-black text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline/5 font-medium">
                 {loading ? (
-                   <tr><td colSpan="4" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">Synchronizing Table...</td></tr>
+                   <tr><td colSpan="4" className="px-10 py-8 text-center">
+                     <div className="flex items-center justify-center gap-2">
+                       <div className="animate-spin">
+                         <Activity size={20} className="text-primary" strokeWidth={2.5} />
+                       </div>
+                       <span className="text-sm font-bold text-on-surface-variant">Loading credentials...</span>
+                     </div>
+                   </td></tr>
                 ) : users.length === 0 ? (
-                   <tr><td colSpan="4" className="px-10 py-8 text-center text-error font-bold text-sm">No profiles found for {activeTab}.</td></tr>
-                ) : users.map(user => (
-                   <tr key={user.id} className="hover:bg-primary/[0.03] transition-colors group">
-                     <td className="px-10 py-8 font-black text-sm text-on-surface tracking-widest">{user.id.substring(0,8).toUpperCase()}</td>
+                   <tr><td colSpan="5" className="px-10 py-8 text-center text-error font-bold text-sm">No profiles found for {activeTab}.</td></tr>
+                ) : users.map(user => {
+                  // Get role-specific ID
+                  const getRoleId = () => {
+                    if (activeTab === 'Students') return user.registration_number || 'N/A';
+                    if (activeTab === 'Wardens') return user.staff_id || user.warden_id || 'N/A';
+                    if (activeTab === 'Staff') return user.staff_id || 'N/A';
+                    return 'N/A';
+                  };
+                  
+                  return (
+                   <tr key={user.id} className="hover:bg-primary/[0.03] transition-colors group cursor-pointer" onClick={() => setSelectedUser(user)}>
                      <td className="px-10 py-8">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-black text-on-surface tracking-tight uppercase">{user.name}</span>
-                          <span className="text-[10px] text-primary font-black uppercase tracking-widest">{user.email}</span>
+                        <div className="flex items-center gap-3">
+                          {user.photo_url ? (
+                            <img 
+                              src={user.photo_url} 
+                              alt={user.name}
+                              className="w-8 h-8 rounded-full object-cover border border-outline/20"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-black text-primary">
+                              {user.name?.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="flex flex-col">
+                            <span className="text-sm font-black text-on-surface tracking-tight uppercase hover:text-primary transition-colors">{user.name}</span>
+                            <span className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest">{user.role}</span>
+                          </div>
                         </div>
+                     </td>
+                     <td className="px-10 py-8 font-mono font-black text-sm text-on-surface tracking-widest">
+                       {getRoleId()}
+                     </td>
+                     <td className="px-10 py-8">
+                        <span className="text-xs font-black text-primary uppercase tracking-widest">{user.email}</span>
                      </td>
                      <td className="px-10 py-8 flex items-center gap-2">
                         <MapPin size={12} className="text-on-surface-variant/50" />
                         <span className="text-xs font-black text-on-surface-variant uppercase">{user.hostel_id || 'Global / N/A'}</span>
                      </td>
                      <td className="px-10 py-8 text-right">
-                        <Button onClick={() => handleDeleteUser(user.id)} variant="danger" className="bg-error text-white text-[10px] tracking-widest font-black uppercase py-2 px-4 shadow-xl shadow-error/20 gap-2">
+                        <Button onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteUser(user.id);
+                        }} variant="danger" className="bg-error text-white text-[10px] tracking-widest font-black uppercase py-2 px-4 shadow-xl shadow-error/20 gap-2">
                            <Trash2 size={12} strokeWidth={3} />
                            Revoke
                         </Button>
                      </td>
                    </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -237,11 +281,12 @@ export default function SupervisorDashboard() {
         </div>
       </Card>
       
+      {/* User Detail Modal */}
+      <UserDetailModal user={selectedUser} onClose={() => setSelectedUser(null)} />
+
       {/* Dynamic Ambient Blur */}
       <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-primary/5 blur-[160px] pointer-events-none z-[-1]" />
     </PortalLayout>
   );
 }
 
-// Re-import icons potentially used but not handled in thought
-import { HardHat as HardHatIcon } from 'lucide-react';

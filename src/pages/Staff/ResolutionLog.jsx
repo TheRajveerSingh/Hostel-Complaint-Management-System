@@ -26,12 +26,15 @@ import {
 import { supabase } from '../../lib/supabase';
 import { authService } from '../../lib/auth';
 import ExportDropdown from '../../components/ui/ExportDropdown';
+
 export default function ResolutionLog() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const currentUser = authService.getCurrentUser();
   const [historyLogs, setHistoryLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [avgTimeStr, setAvgTimeStr] = useState('N/A');
+  const [avgSatisfied, setAvgSatisfied] = useState(null);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -43,7 +46,33 @@ export default function ResolutionLog() {
         .eq('status', 'resolved')
         .order('updated_at', { ascending: false });
       
-      if (data) setHistoryLogs(data);
+      if (data) {
+        setHistoryLogs(data);
+
+        // Calculate real avg resolution time
+        const validTimes = data.filter(c => c.created_at && c.updated_at).map(c => {
+          const diff = new Date(c.updated_at) - new Date(c.created_at);
+          return diff / (1000 * 60); // minutes
+        });
+        if (validTimes.length > 0) {
+          const avg = validTimes.reduce((a, b) => a + b, 0) / validTimes.length;
+          if (avg < 60) setAvgTimeStr(`${Math.round(avg)}m`);
+          else setAvgTimeStr(`${(avg / 60).toFixed(1)}h`);
+        }
+
+        // Fetch feedback for these complaints to compute avg satisfaction
+        if (data.length > 0) {
+          const ids = data.map(c => c.id);
+          const { data: feedbackData } = await supabase
+            .from('feedback')
+            .select('rating')
+            .in('complaint_id', ids);
+          if (feedbackData && feedbackData.length > 0) {
+            const avg = feedbackData.reduce((a, b) => a + (b.rating || 0), 0) / feedbackData.length;
+            setAvgSatisfied(avg.toFixed(1));
+          }
+        }
+      }
       setLoading(false);
     };
     fetchHistory();
@@ -114,12 +143,11 @@ export default function ResolutionLog() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
           {[
             { label: 'Total Resolved', value: historyLogs.length, color: 'text-success', icon: CheckCircle2 },
-            { label: 'Avg Time', value: '54m', color: 'text-secondary', icon: Clock },
-            { label: 'Efficiency', value: '98%', color: 'text-primary', icon: TrendingUp },
-            { label: 'Satisfied', value: '100%', color: 'text-tertiary', icon: ShieldCheck }
+            { label: 'Avg Time', value: historyLogs.length > 0 ? avgTimeStr : '—', color: 'text-secondary', icon: Clock },
+            { label: 'Satisfied', value: avgSatisfied !== null ? `${avgSatisfied}/5 ★` : '—', color: 'text-tertiary', icon: ShieldCheck }
           ].map((stat, idx) => {
             const Icon = stat.icon;
             return (
@@ -180,7 +208,14 @@ export default function ResolutionLog() {
               </thead>
               <tbody className="divide-y divide-outline/5 font-medium">
                 {loading ? (
-                  <tr><td colSpan="5" className="px-8 py-8 text-center text-sm font-bold text-on-surface-variant">Syncing with Central Archive...</td></tr>
+                  <tr><td colSpan="5" className="px-8 py-8 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="animate-spin">
+                        <Activity size={20} className="text-secondary" strokeWidth={2.5} />
+                      </div>
+                      <span className="text-sm font-bold text-on-surface-variant">Loading resolution history...</span>
+                    </div>
+                  </td></tr>
                 ) : filteredHistory.length === 0 ? (
                   <tr><td colSpan="5" className="px-8 py-8 text-center text-sm font-bold text-on-surface-variant">No operational history found.</td></tr>
                 ) : filteredHistory.map((item) => {
@@ -235,10 +270,7 @@ export default function ResolutionLog() {
         </Card>
       </div>
 
-      <div className="mt-20 opacity-[0.03] select-none pointer-events-none absolute bottom-10 right-10 flex flex-col items-end">
-        <History size={200} strokeWidth={0.5} className="text-on-surface" />
-        <span className="text-6xl font-black uppercase tracking-[0.2em] -mt-10 mr-10">LOG ARCHIVE</span>
-      </div>
+
     </PortalLayout>
   );
 }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardFooter } from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
-import { HardHat as StaffIcon, Lock, User, Briefcase, Hash, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { HardHat as StaffIcon, Lock, User, Briefcase, Hash, ArrowLeft, ShieldCheck, Camera } from 'lucide-react';
 import { authService } from '../../lib/auth';
 
 export default function StaffLogin() {
@@ -17,6 +17,20 @@ export default function StaffLogin() {
     category: '',
     password: ''
   });
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoBase64, setPhotoBase64] = useState(null);
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { alert('Photo must be under 2MB.'); return; }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhotoBase64(reader.result);
+      setPhotoPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,7 +41,8 @@ export default function StaffLogin() {
         await authService.login(formData.email, formData.password, 'staff');
         navigate('/staff/dashboard');
       } else {
-        await authService.register({ ...formData, role: 'staff' });
+        if (!photoBase64) { setError('A profile photo is required to register.'); return; }
+        await authService.register({ ...formData, role: 'staff', photo_url: photoBase64 });
         setError('Registration successful! Please login.');
         setIsLogin(true);
       }
@@ -77,12 +92,37 @@ export default function StaffLogin() {
             )}
             {!isLogin && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-4 duration-500">
+                {/* Photo Upload */}
+                <div className="md:col-span-2 flex flex-col items-center gap-4">
+                  <label className="cursor-pointer group flex flex-col items-center gap-3">
+                    <div className={`w-24 h-24 rounded-full border-4 border-dashed overflow-hidden flex items-center justify-center transition-all ${
+                      photoPreview ? 'border-secondary' : 'border-outline/20 hover:border-secondary/50'
+                    } bg-surface-container-low`}>
+                      {photoPreview
+                        ? <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                        : <Camera size={28} className="text-on-surface-variant/40 group-hover:text-secondary transition-colors" strokeWidth={1.5} />
+                      }
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60 group-hover:text-secondary transition-colors">
+                      {photoPreview ? 'Change Photo' : 'Upload Profile Photo *'}
+                    </span>
+                    <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                  </label>
+                </div>
                 <Input 
                   label="Full Name" 
                   icon={User}
                   placeholder="e.g. Ramesh Kumar" 
                   value={formData.name}
                   onChange={e => setFormData({...formData, name: e.target.value})}
+                  required 
+                />
+                <Input 
+                  label="Staff ID" 
+                  icon={Hash}
+                  placeholder="e.g. STF-001" 
+                  value={formData.staff_id}
+                  onChange={e => setFormData({...formData, staff_id: e.target.value})}
                   required 
                 />
                 <div className="space-y-2">
@@ -103,6 +143,7 @@ export default function StaffLogin() {
                       <option value="plumber">Plumber</option>
                       <option value="carpenter">Carpenter</option>
                       <option value="housekeeping">Housekeeping</option>
+                      <option value="painter">Painter</option>
                     </select>
                   </div>
                 </div>

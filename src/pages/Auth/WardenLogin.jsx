@@ -5,7 +5,7 @@ import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import Button from '../../components/ui/Button';
 import { HOSTELS } from '../../constants/hostels';
-import { ShieldCheck as WardenIcon, Lock, User, Hash, ArrowLeft, Activity } from 'lucide-react';
+import { ShieldCheck as WardenIcon, Lock, User, Hash, ArrowLeft, Activity, Camera } from 'lucide-react';
 import { authService } from '../../lib/auth';
 
 export default function WardenLogin() {
@@ -19,6 +19,17 @@ export default function WardenLogin() {
     warden_id: '',
     password: ''
   });
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoBase64, setPhotoBase64] = useState(null);
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { alert('Photo must be under 2MB.'); return; }
+    const reader = new FileReader();
+    reader.onloadend = () => { setPhotoBase64(reader.result); setPhotoPreview(reader.result); };
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,7 +40,8 @@ export default function WardenLogin() {
         await authService.login(formData.email, formData.password, 'warden');
         navigate('/warden/dashboard');
       } else {
-        await authService.register({ ...formData, role: 'warden' });
+        if (!photoBase64) { setError('A profile photo is required to register.'); return; }
+        await authService.register({ ...formData, role: 'warden', photo_url: photoBase64 });
         setError('Registration successful! Please login.');
         setIsLogin(true);
       }
@@ -79,12 +91,36 @@ export default function WardenLogin() {
             )}
             {!isLogin && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-4 duration-500">
+                <div className="md:col-span-2 flex flex-col items-center gap-4">
+                  <label className="cursor-pointer group flex flex-col items-center gap-3">
+                    <div className={`w-24 h-24 rounded-full border-4 border-dashed overflow-hidden flex items-center justify-center transition-all ${
+                      photoPreview ? 'border-success' : 'border-outline/20 hover:border-success/50'
+                    } bg-surface-container-low`}>
+                      {photoPreview
+                        ? <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                        : <Camera size={28} className="text-on-surface-variant/40 group-hover:text-success transition-colors" strokeWidth={1.5} />
+                      }
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60 group-hover:text-success transition-colors">
+                      {photoPreview ? 'Change Photo' : 'Upload Profile Photo *'}
+                    </span>
+                    <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                  </label>
+                </div>
                 <Input 
                   label="Full Name" 
                   icon={User}
                   placeholder="e.g. Dr. Satish" 
                   value={formData.name}
                   onChange={e => setFormData({...formData, name: e.target.value})}
+                  required 
+                />
+                <Input 
+                  label="Warden ID" 
+                  icon={Hash}
+                  placeholder="e.g. WDN-001" 
+                  value={formData.warden_id}
+                  onChange={e => setFormData({...formData, warden_id: e.target.value})}
                   required 
                 />
                 <Select 

@@ -3,6 +3,7 @@ import PortalLayout from '../../layouts/PortalLayout';
 import { Card, CardHeader } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import ExportDropdown from '../../components/ui/ExportDropdown';
+import UserDetailModal from '../../components/ui/UserDetailModal';
 import { 
   Users, 
   Search, 
@@ -18,8 +19,7 @@ import {
   LayoutGrid,
   Zap,
   ShieldCheck,
-  Star,
-  Phone
+  Mail
 } from 'lucide-react';
 
 import { supabase } from '../../lib/supabase';
@@ -35,6 +35,7 @@ export default function WardenStaffList() {
 
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedStaff, setSelectedStaff] = useState(null);
 
   const exportColumns = [
     { header: 'System ID', dataKey: 'id' },
@@ -145,7 +146,14 @@ export default function WardenStaffList() {
             </thead>
             <tbody className="divide-y divide-outline/5 font-medium">
               {loading ? (
-                <tr><td colSpan="6" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">Syncing with personnel database...</td></tr>
+                <tr><td colSpan="6" className="px-10 py-8 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="animate-spin">
+                      <Activity size={20} className="text-primary" strokeWidth={2.5} />
+                    </div>
+                    <span className="text-sm font-bold text-on-surface-variant">Loading staff...</span>
+                  </div>
+                </td></tr>
               ) : staffList.length === 0 ? (
                 <tr><td colSpan="6" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">No maintenance staff found in intelligence array.</td></tr>
               ) : staffList.map((s) => (
@@ -159,16 +167,24 @@ export default function WardenStaffList() {
                     </div>
                   </td>
                   <td className="px-10 py-8">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center text-on-surface-variant border border-outline/5 group-hover:border-secondary transition-colors">
-                        <Phone size={16} strokeWidth={2.5} />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-black text-on-surface tracking-tight uppercase">{s.name}</span>
-                        <div className="flex items-center gap-1.5">
-                          <Star size={10} className="text-tertiary fill-tertiary" />
-                          <span className="text-[10px] text-tertiary font-black uppercase tracking-widest">Global Field</span>
+                    <div 
+                      className="flex items-center gap-4 cursor-pointer group"
+                      onClick={() => setSelectedStaff(s)}
+                    >
+                      {s.photo_url ? (
+                        <img 
+                          src={s.photo_url} 
+                          alt={s.name}
+                          className="w-10 h-10 rounded-xl object-cover border border-outline/5 group-hover:border-secondary group-hover:scale-110 transition-all"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center text-on-surface-variant border border-outline/5 group-hover:border-secondary group-hover:text-secondary transition-colors">
+                          <HardHat size={18} strokeWidth={2} />
                         </div>
+                      )}
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black text-on-surface tracking-tight uppercase group-hover:text-secondary transition-colors">{s.name}</span>
+                        <span className="text-[10px] text-on-surface-variant/50 font-bold uppercase tracking-widest">{s.category || 'General'}</span>
                       </div>
                     </div>
                   </td>
@@ -206,6 +222,9 @@ export default function WardenStaffList() {
         </div>
       </Card>
       
+      {/* User Detail Modal */}
+      <UserDetailModal user={selectedStaff} onClose={() => setSelectedStaff(null)} />
+
       {/* Decorative ambient background */}
       <div className="fixed bottom-0 left-[10%] w-[50%] h-[30%] bg-secondary/5 blur-[120px] pointer-events-none z-[-1]" />
     </PortalLayout>

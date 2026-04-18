@@ -101,10 +101,6 @@ export default function StaffDashboard() {
             filename="maintenance-task-queue"
             title="Field Operations Task Queue"
           />
-          <Button className="font-black uppercase text-xs tracking-widest gap-2 shadow-2xl shadow-primary/30 h-14 px-8 bg-secondary hover:bg-secondary/90">
-            <Activity size={18} strokeWidth={2.5} />
-            Performance
-          </Button>
         </div>
       </div>
 
@@ -154,7 +150,14 @@ export default function StaffDashboard() {
             </thead>
             <tbody className="divide-y divide-outline/5">
               {loading ? (
-                <tr><td colSpan="5" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">Syncing with Central Command...</td></tr>
+                <tr><td colSpan="5" className="px-10 py-8 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="animate-spin">
+                      <Activity size={20} className="text-secondary" strokeWidth={2.5} />
+                    </div>
+                    <span className="text-sm font-bold text-on-surface-variant">Loading task queue...</span>
+                  </div>
+                </td></tr>
               ) : assignedTasks.length === 0 ? (
                 <tr><td colSpan="5" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">No assignments active in your queue.</td></tr>
               ) : assignedTasks.map((t) => (

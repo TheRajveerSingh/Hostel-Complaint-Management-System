@@ -34,7 +34,8 @@ import {
   ArrowUpRight,
   Filter,
   Calendar,
-  Sparkle
+  Sparkle,
+  HardHat
 } from 'lucide-react';
 
 import { supabase } from '../../lib/supabase';
@@ -85,14 +86,32 @@ export default function WardenDashboard() {
   const pieData = Object.keys(categories).map(key => ({ name: key, value: categories[key] }));
   if (pieData.length === 0) pieData.push({ name: 'No Data', value: 100 });
 
-  // Mocked Bar Data Since Timestamps Need Complex Aggregation
-  const barData = [
-    { name: 'Mon', count: Math.round(complaints.length * 0.2) },
-    { name: 'Tue', count: Math.round(complaints.length * 0.1) },
-    { name: 'Wed', count: Math.round(complaints.length * 0.3) },
-    { name: 'Thu', count: Math.round(complaints.length * 0.15) },
-    { name: 'Fri', count: Math.round(complaints.length * 0.25) }
-  ];
+  // Calculate Incident Velocity (real data - complaints per day for last 7 days)
+  const getIncidentVelocityData = () => {
+    const today = new Date();
+    const last7Days = {};
+    
+    // Initialize last 7 days
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+      const dateKey = date.toISOString().split('T')[0];
+      last7Days[dateKey] = { name: dayName, count: 0, date: dateKey };
+    }
+    
+    // Count complaints per day
+    complaints.forEach(complaint => {
+      const complaintDate = new Date(complaint.created_at).toISOString().split('T')[0];
+      if (last7Days[complaintDate]) {
+        last7Days[complaintDate].count += 1;
+      }
+    });
+    
+    return Object.values(last7Days);
+  };
+
+  const barData = getIncidentVelocityData();
 
   return (
     <PortalLayout menuItems={menuItems} roleName="Warden">
@@ -262,5 +281,4 @@ export default function WardenDashboard() {
   );
 }
 
-// Re-import missing icons used in code
-import { HardHat } from 'lucide-react';
+
