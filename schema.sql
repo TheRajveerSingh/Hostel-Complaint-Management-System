@@ -2,6 +2,25 @@
 -- Run this in the Supabase SQL Editor
 
 -- 1. Create Tables
+
+-- Users unified table (stores all user types with registration info)
+CREATE TABLE users (
+    id UUID PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    role TEXT NOT NULL CHECK (role IN ('student', 'staff', 'warden', 'supervisor')),
+    name TEXT,
+    phone_number TEXT,
+    registration_number TEXT, -- For students
+    staff_id TEXT, -- For maintenance staff
+    warden_id TEXT, -- For wardens
+    supervisor_id TEXT, -- For supervisors
+    hostel_id UUID, -- For students/wardens
+    category TEXT[], -- For maintenance staff (array of categories)
+    photo_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT fk_users_auth FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE hostels (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL UNIQUE,
@@ -47,7 +66,7 @@ CREATE TABLE supervisor_credentials (
 
 CREATE TABLE complaints (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    student_id UUID REFERENCES students(id) ON DELETE CASCADE NOT NULL,
+    student_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
     hostel_id UUID REFERENCES hostels(id) ON DELETE CASCADE NOT NULL,
     category TEXT NOT NULL,
     location TEXT NOT NULL,
@@ -56,7 +75,7 @@ CREATE TABLE complaints (
     photos TEXT[] DEFAULT '{}',
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending','in_progress','resolved','escalated')),
     priority TEXT,
-    assigned_to UUID REFERENCES maintenance_staff(id) ON DELETE SET NULL,
+    assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
     is_emergency BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     resolved_at TIMESTAMP WITH TIME ZONE
@@ -65,7 +84,7 @@ CREATE TABLE complaints (
 CREATE TABLE feedback (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     complaint_id UUID REFERENCES complaints(id) ON DELETE CASCADE NOT NULL UNIQUE,
-    student_id UUID REFERENCES students(id) ON DELETE CASCADE NOT NULL,
+    student_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
     rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
     comment TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -73,6 +92,7 @@ CREATE TABLE feedback (
 
 -- 2. Basic Setup (RLS & Triggers)
 -- Enable RLS on all tables
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE hostels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wardens ENABLE ROW LEVEL SECURITY;
