@@ -515,6 +515,114 @@ export default function StudentDashboard() {
             )}
           </div>
         )}
+
+        {/* Warden Info Tab */}
+        {activeTab === 'warden' && (
+          <div className="p-10 md:p-14">
+            {wardenInfo ? (
+              <div className="space-y-8">
+                <div className="flex items-center gap-8 pb-10 border-b border-outline/10">
+                  <div className="w-48 h-48 rounded-2xl overflow-hidden border-4 border-warning/30 flex-shrink-0 shadow-2xl">
+                    {wardenInfo.photo_url ? (
+                      <img src={wardenInfo.photo_url} alt={wardenInfo.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-warning/20 to-warning/5 flex items-center justify-center">
+                        <Users size={64} className="text-warning/40" strokeWidth={1.5} />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-warning/5 border border-warning/10 mb-4">
+                      <MapPin size={14} className="text-warning" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-warning">Hostel Authority</span>
+                    </div>
+                    <h2 className="display-font text-4xl md:text-5xl font-black text-on-surface leading-none tracking-tighter mb-4">
+                      {wardenInfo.name}
+                    </h2>
+                    <p className="text-on-surface-variant font-medium text-lg max-w-lg mb-8">
+                      Your hostel warden manages all residential operations and grievance resolution.
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-6 bg-surface-container-high rounded-xl border border-outline/5 hover:border-warning/10 transition-colors">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">Email Address</p>
+                        <p className="text-lg font-bold text-on-surface break-all">{wardenInfo.email}</p>
+                      </div>
+                      {wardenInfo.phone_number && (
+                        <div className="p-6 bg-surface-container-high rounded-xl border border-outline/5 hover:border-warning/10 transition-colors">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">Phone Number</p>
+                          <a href={`tel:${wardenInfo.phone_number}`} className="text-lg font-bold text-warning hover:text-warning-fixed transition-colors">
+                            {wardenInfo.phone_number}
+                          </a>
+                        </div>
+                      )}
+                      <div className="p-6 bg-surface-container-high rounded-xl border border-outline/5 hover:border-warning/10 transition-colors">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">Warden ID</p>
+                        <p className="text-lg font-bold text-on-surface font-mono">{wardenInfo.warden_id || 'N/A'}</p>
+                      </div>
+                      <div className="p-6 bg-surface-container-high rounded-xl border border-outline/5 hover:border-warning/10 transition-colors">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">Member Since</p>
+                        <p className="text-lg font-bold text-on-surface">
+                          {wardenInfo.created_at ? new Date(wardenInfo.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <Card variant="glass" className="p-10 border border-warning/20 bg-warning/5">
+                    <h3 className="text-2xl font-black text-on-surface mb-6 flex items-center gap-2">
+                      <MapPin size={24} className="text-warning" strokeWidth={2.5} />
+                      Quick Contact
+                    </h3>
+                    <div className="space-y-4">
+                      <Button 
+                        onClick={() => window.location.href = `mailto:${wardenInfo.email}`}
+                        variant="secondary"
+                        className="w-full justify-center font-black uppercase text-xs tracking-widest py-4"
+                      >
+                        Send Email
+                      </Button>
+                      {wardenInfo.phone_number && (
+                        <Button 
+                          onClick={() => window.location.href = `tel:${wardenInfo.phone_number}`}
+                          className="w-full justify-center font-black uppercase text-xs tracking-widest py-4 bg-warning hover:bg-warning/90 text-white shadow-lg shadow-warning/30"
+                        >
+                          Call Warden
+                        </Button>
+                      )}
+                    </div>
+                  </Card>
+
+                  <Card variant="glass" className="p-10 border border-warning/20 bg-warning/5">
+                    <h3 className="text-2xl font-black text-on-surface mb-6 flex items-center gap-2">
+                      <Activity size={24} className="text-warning" strokeWidth={2.5} />
+                      Support Information
+                    </h3>
+                    <div className="space-y-3 text-on-surface-variant font-medium">
+                      <p>• Available for hostel-related grievances 24/7</p>
+                      <p>• Priority response for emergency situations</p>
+                      <p>• Direct contact for facility issues</p>
+                      <p>• Coordinates with maintenance staff</p>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="p-6 bg-warning/5 rounded-full mb-6">
+                  <Users size={48} className="text-warning/40" strokeWidth={1.5} />
+                </div>
+                <p className="text-lg font-bold text-on-surface-variant">Warden information not available</p>
+                <p className="text-sm text-on-surface-variant/70 max-w-md mt-2">
+                  Please ensure your hostel assignment is valid in your profile.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Detail Modal Overlay */}
@@ -644,116 +752,8 @@ export default function StudentDashboard() {
             </div>
           </Card>
         )}
-
-        {/* Warden Info Tab */}
-        {activeTab === 'warden' && (
-          <div className="p-10 md:p-14">
-            {wardenInfo ? (
-              <div className="space-y-8">
-                <div className="flex items-center gap-8 pb-10 border-b border-outline/10">
-                  <div className="w-48 h-48 rounded-2xl overflow-hidden border-4 border-warning/30 flex-shrink-0 shadow-2xl">
-                    {wardenInfo.photo_url ? (
-                      <img src={wardenInfo.photo_url} alt={wardenInfo.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-warning/20 to-warning/5 flex items-center justify-center">
-                        <Users size={64} className="text-warning/40" strokeWidth={1.5} />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-warning/5 border border-warning/10 mb-4">
-                      <MapPin size={14} className="text-warning" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-warning">Hostel Authority</span>
-                    </div>
-                    <h2 className="display-font text-4xl md:text-5xl font-black text-on-surface leading-none tracking-tighter mb-4">
-                      {wardenInfo.name}
-                    </h2>
-                    <p className="text-on-surface-variant font-medium text-lg max-w-lg mb-8">
-                      Your hostel warden manages all residential operations and grievance resolution.
-                    </p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-6 bg-surface-container-high rounded-xl border border-outline/5 hover:border-warning/10 transition-colors">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">Email Address</p>
-                        <p className="text-lg font-bold text-on-surface break-all">{wardenInfo.email}</p>
-                      </div>
-                      {wardenInfo.phone_number && (
-                        <div className="p-6 bg-surface-container-high rounded-xl border border-outline/5 hover:border-warning/10 transition-colors">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">Phone Number</p>
-                          <a href={`tel:${wardenInfo.phone_number}`} className="text-lg font-bold text-warning hover:text-warning-fixed transition-colors">
-                            {wardenInfo.phone_number}
-                          </a>
-                        </div>
-                      )}
-                      <div className="p-6 bg-surface-container-high rounded-xl border border-outline/5 hover:border-warning/10 transition-colors">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">Warden ID</p>
-                        <p className="text-lg font-bold text-on-surface font-mono">{wardenInfo.warden_id || 'N/A'}</p>
-                      </div>
-                      <div className="p-6 bg-surface-container-high rounded-xl border border-outline/5 hover:border-warning/10 transition-colors">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">Member Since</p>
-                        <p className="text-lg font-bold text-on-surface">
-                          {wardenInfo.created_at ? new Date(wardenInfo.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <Card variant="glass" className="p-10 border border-warning/20 bg-warning/5">
-                    <h3 className="text-2xl font-black text-on-surface mb-6 flex items-center gap-2">
-                      <MapPin size={24} className="text-warning" strokeWidth={2.5} />
-                      Quick Contact
-                    </h3>
-                    <div className="space-y-4">
-                      <Button 
-                        onClick={() => window.location.href = `mailto:${wardenInfo.email}`}
-                        variant="secondary"
-                        className="w-full justify-center font-black uppercase text-xs tracking-widest py-4"
-                      >
-                        Send Email
-                      </Button>
-                      {wardenInfo.phone_number && (
-                        <Button 
-                          onClick={() => window.location.href = `tel:${wardenInfo.phone_number}`}
-                          className="w-full justify-center font-black uppercase text-xs tracking-widest py-4 bg-warning hover:bg-warning/90 text-white shadow-lg shadow-warning/30"
-                        >
-                          Call Warden
-                        </Button>
-                      )}
-                    </div>
-                  </Card>
-
-                  <Card variant="glass" className="p-10 border border-warning/20 bg-warning/5">
-                    <h3 className="text-2xl font-black text-on-surface mb-6 flex items-center gap-2">
-                      <Activity size={24} className="text-warning" strokeWidth={2.5} />
-                      Support Information
-                    </h3>
-                    <div className="space-y-3 text-on-surface-variant font-medium">
-                      <p>• Available for hostel-related grievances 24/7</p>
-                      <p>• Priority response for emergency situations</p>
-                      <p>• Direct contact for facility issues</p>
-                      <p>• Coordinates with maintenance staff</p>
-                    </div>
-                  </Card>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="p-6 bg-warning/5 rounded-full mb-6">
-                  <Users size={48} className="text-warning/40" strokeWidth={1.5} />
-                </div>
-                <p className="text-lg font-bold text-on-surface-variant">Warden information not available</p>
-                <p className="text-sm text-on-surface-variant/70 max-w-md mt-2">
-                  Please ensure your hostel assignment is valid in your profile.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
       </Card>
-    </div>
+    </PortalLayout>
   );
 }
 
