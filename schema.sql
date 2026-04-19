@@ -72,4 +72,7 @@ ALTER TABLE supervisor_credentials ENABLE ROW LEVEL SECURITY;
 
 -- Note: Proper RLS policies should be configured based on your security requirements
 -- For now, supervisor_credentials contains manual login info.
--- Example: INSERT INTO supervisor_credentials(username, password_hash) VALUES ('admin', 'hashed_password');
+-- Default Supervisor Credentials
+INSERT INTO supervisor_credentials(username, password_hash) 
+VALUES ('rajveersingh3hm@gmail.com', '123456')
+ON CONFLICT (username) DO NOTHING;

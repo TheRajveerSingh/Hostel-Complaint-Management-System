@@ -10,9 +10,9 @@ export default function SupervisorLogin() {
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
-    email: '',
+    email: 'rajveersingh3hm@gmail.com',
     supervisor_id: '',
-    secret_key: ''
+    secret_key: '123456'
   });
 
   const handleSubmit = async (e) => {
