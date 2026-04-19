@@ -1,14 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LogOut, LayoutDashboard, ChevronRight, User } from 'lucide-react';
 import { authService } from '../../lib/auth';
-import ProfileViewModal from '../ui/ProfileViewModal';
 
 const Sidebar = ({ menuItems, roleName }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const currentUser = authService.getCurrentUser();
 
   return (
     <>
@@ -61,7 +58,7 @@ const Sidebar = ({ menuItems, roleName }) => {
 
         <div className="mt-auto pt-8 border-t border-outline-variant space-y-3">
           <button 
-            onClick={() => setShowProfileModal(true)} 
+            onClick={() => navigate('/profile')} 
             className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-all duration-500 font-black uppercase text-xs tracking-widest group"
           >
             <div className="p-1 rounded-lg group-hover:scale-110 transition-transform">
@@ -79,9 +76,6 @@ const Sidebar = ({ menuItems, roleName }) => {
             <span>Terminate Session</span>
           </button>
         </div>
-
-        {/* Profile Modal */}
-        <ProfileViewModal user={currentUser} onClose={() => setShowProfileModal(false)} isOpen={showProfileModal} />
       </aside>
 
       {/* Mobile Nav Dock */}

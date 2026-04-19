@@ -303,7 +303,7 @@ export default function WardenDashboard() {
                   <h3 className="display-font text-3xl font-black text-error leading-none uppercase tracking-tighter">IMMEDIATE CRISIS</h3>
                 </div>
                 <p className="text-on-surface-variant font-bold text-sm tracking-widest uppercase opacity-60">
-                  {immediateCrisisComplaints.length} active urgent complaint{immediateCrisisComplaints.length !== 1 ? 's' : ''} detected
+                  {immediateCrisisComplaints?.length || 0} active urgent complaint{(immediateCrisisComplaints?.length || 0) !== 1 ? 's' : ''} detected
                 </p>
               </div>
             </div>

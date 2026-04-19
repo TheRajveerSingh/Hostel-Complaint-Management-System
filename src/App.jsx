@@ -24,6 +24,9 @@ import ResolutionLog from './pages/Staff/ResolutionLog';
 // Supervisor
 import SupervisorDashboard from './pages/Supervisor/Dashboard';
 
+// Profile Page
+import ProfilePage from './components/ProfilePage';
+
 import ThemeToggle from './components/ui/ThemeToggle';
 
 
@@ -58,6 +61,13 @@ function App() {
 
         {/* Supervisor Routes */}
         <Route path="/supervisor/dashboard" element={<SupervisorDashboard />} />
+
+        {/* Profile Routes - Common for all roles */}
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/student/profile" element={<ProfilePage />} />
+        <Route path="/warden/profile" element={<ProfilePage />} />
+        <Route path="/staff/profile" element={<ProfilePage />} />
+        <Route path="/supervisor/profile" element={<ProfilePage />} />
       </Routes>
     </div>
   );
