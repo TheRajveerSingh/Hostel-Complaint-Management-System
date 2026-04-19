@@ -753,7 +753,6 @@ export default function StudentDashboard() {
           </Card>
         </div>
       )}
-      </Card>
     </PortalLayout>
   );
 }
