@@ -5,6 +5,11 @@ import { Card } from './Card';
 const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+const formatDateKey = (date) => {
+  const d = new Date(date);
+  return d.toISOString().split('T')[0];
+};
+
 // Function to get color based on complaint count - Low (1-3), Medium (4-6), High (7-9), Very High (9+)
 const getHeatmapColor = (count) => {
   if (count === 0) return 'bg-surface-container-low border-outline/10';
