@@ -29,7 +29,7 @@ export default function UserDetailModal({ user, onClose }) {
     } else if (user.role === 'staff') {
       return [
         { label: 'Staff ID', value: user.staff_id, icon: Award },
-        { label: 'Categories', value: user.category ? user.category.join(', ') : 'N/A', icon: HardHat },
+        { label: 'Specialization', value: user.category || 'N/A', icon: HardHat },
         ...common
       ];
     } else if (user.role === 'warden') {

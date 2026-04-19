@@ -144,6 +144,7 @@ export default function StaffLogin() {
                       <option value="carpenter">Carpenter</option>
                       <option value="housekeeping">Housekeeping</option>
                       <option value="painter">Painter</option>
+                      <option value="technician">Technician</option>
                     </select>
                   </div>
                 </div>

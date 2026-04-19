@@ -5,6 +5,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import Button from '../../components/ui/Button';
 import ExportDropdown from '../../components/ui/ExportDropdown';
 import UserDetailModal from '../../components/ui/UserDetailModal';
+import ImageViewer from '../../components/ui/ImageViewer';
 import { 
   ClipboardList, 
   Search, 
@@ -26,7 +27,9 @@ import {
   ArrowUpRight,
   Calendar,
   Image as ImageIcon,
-  MessageSquare
+  MessageSquare,
+  AlertCircle,
+  Activity
 } from 'lucide-react';
 import { authService } from '../../lib/auth';
 
@@ -37,6 +40,9 @@ export default function WardenComplaints() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showMatrix, setShowMatrix] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [viewerImages, setViewerImages] = useState([]);
+  const [viewerStartIndex, setViewerStartIndex] = useState(0);
 
   const [complaints, setComplaints] = useState([]);
   const [staffList, setStaffList] = useState([]);
@@ -51,7 +57,10 @@ export default function WardenComplaints() {
   const wardenHostel = currentUser?.hostel_id;
 
   const fetchData = async () => {
-    if (!wardenHostel) return;
+    if (!wardenHostel) {
+      setLoading(false);
+      return;
+    }
     
     // Fetch Complaints
     const { data: cData } = await supabase.from('complaints').select('*').eq('hostel_id', wardenHostel).order('created_at', { ascending: false });
@@ -77,7 +86,7 @@ export default function WardenComplaints() {
     fetchData();
   }, [wardenHostel]);
 
-  // Exclude resolved complaints from grievance view, then sort emergencies to top
+  // Exclude resolved complaints from grievance view, then sort emergencies and immediate crisis to top
   const filteredComplaints = complaints
     .filter(c => c.status !== 'resolved')
     .filter(c => 
@@ -86,8 +95,12 @@ export default function WardenComplaints() {
     )
     .filter(c => categoryFilter === 'all' || c.category === categoryFilter)
     .sort((a, b) => {
-      if (a.is_emergency && !b.is_emergency) return -1;
-      if (!a.is_emergency && b.is_emergency) return 1;
+      // Immediate crisis first
+      const aIsCrisis = a.category === 'Immediate crisis' || a.is_emergency;
+      const bIsCrisis = b.category === 'Immediate crisis' || b.is_emergency;
+      if (aIsCrisis && !bIsCrisis) return -1;
+      if (!aIsCrisis && bIsCrisis) return 1;
+      // Then sort by date
       return new Date(b.created_at) - new Date(a.created_at);
     });
 
@@ -144,6 +157,11 @@ export default function WardenComplaints() {
       let classifiedCount = 0;
 
       for (const complaint of complaints) {
+        // Don't reclassify "Immediate crisis" complaints
+        if (complaint.category === 'Immediate crisis') {
+          continue;
+        }
+
         const descriptionLower = complaint.description.toLowerCase();
         let newCategory = 'Other';
 
@@ -187,6 +205,19 @@ export default function WardenComplaints() {
 
   return (
     <PortalLayout menuItems={menuItems} roleName="Warden">
+      {!wardenHostel ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <Card variant="glass" className="p-12 max-w-md text-center border border-error/30 bg-error/5">
+            <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mx-auto mb-6">
+              <AlertCircle size={32} className="text-error" />
+            </div>
+            <h2 className="text-2xl font-bold text-on-surface mb-2">Authentication Error</h2>
+            <p className="text-on-surface-variant mb-6">Unable to load hostel information. Please log in again.</p>
+            <Button href="/auth/warden-login" className="w-full">Return to Login</Button>
+          </Card>
+        </div>
+      ) : (
+      <>
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-6">
         <div className="max-w-2xl">
@@ -479,7 +510,14 @@ export default function WardenComplaints() {
                       </h4>
                       <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto">
                         {selectedComplaint.photos.map((photo, idx) => (
-                          <div key={idx} className="relative group rounded-2xl overflow-hidden border border-outline/5 hover:border-primary/30 transition-all">
+                          <div 
+                            key={idx} 
+                            onClick={() => {
+                              setViewerImages(selectedComplaint.photos);
+                              setViewerStartIndex(idx);
+                              setShowImageViewer(true);
+                            }}
+                            className="relative group rounded-2xl overflow-hidden border border-outline/5 hover:border-primary/30 transition-all cursor-pointer">
                             <img 
                               src={photo} 
                               alt={`Evidence ${idx + 1}`}
@@ -550,7 +588,9 @@ export default function WardenComplaints() {
                   <span className="w-2 h-2 rounded-full bg-secondary animate-ping" />
                   <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Live audit logging active for this session</span>
                 </div>
-                <button className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline underline-offset-4 decoration-2">
+                <button 
+                  onClick={() => alert('Detailed history log will be available in the next update.')}
+                  className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline underline-offset-4 decoration-2 cursor-pointer transition-opacity hover:opacity-80">
                   View full history log
                 </button>
               </div>
@@ -562,8 +602,18 @@ export default function WardenComplaints() {
       {/* User Detail Modal */}
       <UserDetailModal user={selectedUser} onClose={() => setSelectedUser(null)} />
 
+      {/* Image Viewer */}
+      <ImageViewer 
+        images={viewerImages} 
+        currentIndex={viewerStartIndex}
+        isOpen={showImageViewer}
+        onClose={() => setShowImageViewer(false)}
+      />
+
       {/* Decorative ambient background */}
       <div className="fixed top-1/4 right-[10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] pointer-events-none z-[-1]" />
+      </>
+      )}
     </PortalLayout>
   );
 }
