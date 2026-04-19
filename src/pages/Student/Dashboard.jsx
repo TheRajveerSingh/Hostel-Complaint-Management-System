@@ -751,7 +751,8 @@ export default function StudentDashboard() {
               <span className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Connect with Warden for priority resolution</span>
             </div>
           </Card>
-        )}
+        </div>
+      )}
       </Card>
     </PortalLayout>
   );
