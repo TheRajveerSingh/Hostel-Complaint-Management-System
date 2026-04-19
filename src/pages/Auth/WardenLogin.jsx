@@ -17,6 +17,7 @@ export default function WardenLogin() {
     email: '',
     hostel_id: '',
     warden_id: '',
+    phone_number: '',
     password: ''
   });
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -144,6 +145,17 @@ export default function WardenLogin() {
               onChange={e => setFormData({...formData, email: e.target.value})}
               required 
             />
+
+            {!isLogin && (
+              <Input 
+                label="Phone Number" 
+                type="tel"
+                placeholder="e.g. +91 98765 43210" 
+                value={formData.phone_number}
+                onChange={e => setFormData({...formData, phone_number: e.target.value})}
+                required 
+              />
+            )}
             
             <Input 
               label="Secret Key" 

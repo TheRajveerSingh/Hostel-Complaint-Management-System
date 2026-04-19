@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PortalLayout from '../layouts/PortalLayout';
 import { Card } from './ui/Card';
@@ -10,19 +10,32 @@ import { authService } from '../lib/auth';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const currentUser = authService.getCurrentUser();
+  const [userProfile, setUserProfile] = useState(authService.getCurrentUser());
   const [isEditMode, setIsEditMode] = useState(false);
   const [passwordVerified, setPasswordVerified] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  const [photoPreview, setPhotoPreview] = useState(currentUser?.photo_url || null);
+  const [photoPreview, setPhotoPreview] = useState(userProfile?.photo_url || null);
   const [editData, setEditData] = useState({
-    name: currentUser?.name || '',
-    email: currentUser?.email || '',
+    name: userProfile?.name || '',
+    email: userProfile?.email || '',
   });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
+
+  // Update state when userProfile changes
+  useEffect(() => {
+    const updated = authService.getCurrentUser();
+    if (updated) {
+      setUserProfile(updated);
+      setPhotoPreview(updated.photo_url || null);
+      setEditData({
+        name: updated.name || '',
+        email: updated.email || '',
+      });
+    }
+  }, []);
 
   const menuItems = [
     { id: 'profile', label: 'Profile', path: '/profile', icon: 'User' },
@@ -68,15 +81,21 @@ export default function ProfilePage() {
       const { error } = await supabase
         .from('users')
         .update(updateData)
-        .eq('id', currentUser.id);
+        .eq('id', userProfile.id);
 
       if (error) throw error;
 
       const updatedUser = {
-        ...currentUser,
+        ...userProfile,
         ...updateData,
       };
+      
+      // Update localStorage
       localStorage.setItem('hostel_care_session', JSON.stringify(updatedUser));
+      
+      // Update component state
+      setUserProfile(updatedUser);
+      setPhotoPreview(updatedUser.photo_url || null);
 
       setSaveSuccess('Profile updated successfully!');
       setTimeout(() => {
@@ -101,10 +120,10 @@ export default function ProfilePage() {
     return roleMap[role] || role;
   };
 
-  if (!currentUser) return null;
+  if (!userProfile) return null;
 
   return (
-    <PortalLayout menuItems={menuItems} roleName={getRoleDisplay(currentUser.role)}>
+      <PortalLayout menuItems={menuItems} roleName={getRoleDisplay(userProfile.role)}>
       {/* Back Button */}
       <button 
         onClick={() => navigate(-1)}
@@ -118,7 +137,7 @@ export default function ProfilePage() {
       <div className="mb-16">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10 mb-4">
           <Badge size={14} className="text-primary" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-primary">User Profile • {getRoleDisplay(currentUser.role)}</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-primary">User Profile • {getRoleDisplay(userProfile.role)}</span>
         </div>
         <h1 className="display-font text-5xl md:text-6xl font-black text-on-surface leading-[0.8] tracking-tighter mb-4">
           My <span className="text-primary">Profile</span>
@@ -132,37 +151,37 @@ export default function ProfilePage() {
             <div className="flex flex-col items-center text-center">
               {/* Profile Picture */}
               <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary/30 bg-surface-container-high flex items-center justify-center mb-6">
-                {currentUser?.photo_url ? (
-                  <img src={currentUser.photo_url} alt={currentUser.name} className="w-full h-full object-cover" />
+                {userProfile?.photo_url ? (
+                  <img src={userProfile.photo_url} alt={userProfile.name} className="w-full h-full object-cover" />
                 ) : (
                   <Camera size={48} className="text-on-surface-variant/40" strokeWidth={1.5} />
                 )}
               </div>
 
               {/* Name */}
-              <h2 className="text-3xl font-black text-on-surface mb-2">{currentUser?.name}</h2>
+              <h2 className="text-3xl font-black text-on-surface mb-2">{userProfile?.name}</h2>
               <p className="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-8">
-                {getRoleDisplay(currentUser.role)}
+                {getRoleDisplay(userProfile.role)}
               </p>
 
               {/* Quick Stats */}
               <div className="w-full space-y-3 text-left">
-                {currentUser?.staff_id && (
+                {userProfile?.staff_id && (
                   <div className="p-3 bg-surface-container-low rounded-lg">
                     <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-1">Staff ID</p>
-                    <p className="text-sm font-bold text-on-surface">{currentUser.staff_id}</p>
+                    <p className="text-sm font-bold text-on-surface">{userProfile.staff_id}</p>
                   </div>
                 )}
-                {currentUser?.warden_id && (
+                {userProfile?.warden_id && (
                   <div className="p-3 bg-surface-container-low rounded-lg">
                     <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-1">Warden ID</p>
-                    <p className="text-sm font-bold text-on-surface">{currentUser.warden_id}</p>
+                    <p className="text-sm font-bold text-on-surface">{userProfile.warden_id}</p>
                   </div>
                 )}
-                {currentUser?.registration_number && (
+                {userProfile?.registration_number && (
                   <div className="p-3 bg-surface-container-low rounded-lg">
                     <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-1">Registration No.</p>
-                    <p className="text-sm font-bold text-on-surface">{currentUser.registration_number}</p>
+                    <p className="text-sm font-bold text-on-surface">{userProfile.registration_number}</p>
                   </div>
                 )}
               </div>
@@ -186,30 +205,30 @@ export default function ProfilePage() {
                   <Mail size={16} className="text-on-surface-variant" />
                   <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Email Address</p>
                 </div>
-                <p className="text-lg font-bold text-on-surface break-all">{currentUser?.email}</p>
+                <p className="text-lg font-bold text-on-surface break-all">{userProfile?.email}</p>
               </div>
 
-              {currentUser?.hostel_id && (
+              {userProfile?.hostel_id && (
                 <div className="p-6 bg-surface-container-high rounded-xl border border-outline/5">
                   <div className="flex items-center gap-2 mb-2">
                     <Home size={16} className="text-on-surface-variant" />
                     <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Hostel Assignment</p>
                   </div>
-                  <p className="text-lg font-bold text-on-surface">{currentUser.hostel_id}</p>
+                  <p className="text-lg font-bold text-on-surface">{userProfile.hostel_id}</p>
                 </div>
               )}
 
-              {currentUser?.category && (
+              {userProfile?.category && (
                 <div className="p-6 bg-surface-container-high rounded-xl border border-outline/5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">Specialization</p>
-                  <p className="text-lg font-bold text-on-surface">{currentUser.category}</p>
+                  <p className="text-lg font-bold text-on-surface">{userProfile.category}</p>
                 </div>
               )}
 
               <div className="p-6 bg-primary/5 border border-primary/10 rounded-xl">
                 <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">Member Since</p>
                 <p className="text-sm font-bold text-on-surface">
-                  {new Date(currentUser.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  {new Date(userProfile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                 </p>
               </div>
             </div>
@@ -324,8 +343,8 @@ export default function ProfilePage() {
               onClick={() => {
                 setIsEditMode(false);
                 setPasswordVerified(false);
-                setEditData({ name: currentUser?.name || '', email: currentUser?.email || '' });
-                setPhotoPreview(currentUser?.photo_url || null);
+                setEditData({ name: userProfile?.name || '', email: userProfile?.email || '' });
+                setPhotoPreview(userProfile?.photo_url || null);
               }}
               variant="secondary"
               className="flex-1 font-black uppercase text-xs tracking-widest py-4"

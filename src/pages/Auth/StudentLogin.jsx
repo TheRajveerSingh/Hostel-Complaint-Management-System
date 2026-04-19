@@ -20,6 +20,7 @@ export default function StudentLogin() {
     hostel_id: '',
     room_number: '',
     registration_number: '',
+    phone_number: '',
     password: '',
     otp: '',
     newPassword: ''
@@ -229,6 +230,14 @@ export default function StudentLogin() {
                     placeholder="e.g. 420" 
                     value={formData.room_number}
                     onChange={e => setFormData({...formData, room_number: e.target.value})}
+                    required 
+                  />
+                  <Input 
+                    label="Phone Number" 
+                    type="tel"
+                    placeholder="e.g. +91 98765 43210" 
+                    value={formData.phone_number}
+                    onChange={e => setFormData({...formData, phone_number: e.target.value})}
                     required 
                   />
                 </div>

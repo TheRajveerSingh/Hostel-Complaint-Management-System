@@ -55,10 +55,18 @@ export default function WardenDashboard() {
 
   useEffect(() => {
     const fetchComplaints = async () => {
-      if (!wardenHostel) return;
-      const { data } = await supabase.from('complaints').select('*').eq('hostel_id', wardenHostel);
-      if (data) setComplaints(data);
-      setLoading(false);
+      if (!wardenHostel) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const { data } = await supabase.from('complaints').select('*').eq('hostel_id', wardenHostel);
+        if (data) setComplaints(data);
+      } catch (err) {
+        console.error('Error fetching complaints:', err);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchComplaints();
   }, [wardenHostel]);
@@ -120,6 +128,18 @@ export default function WardenDashboard() {
   const immediateCrisisComplaints = complaints.filter(c => 
     c.category === 'Immediate crisis' && c.status !== 'resolved'
   );
+
+  if (!currentUser) {
+    return (
+      <PortalLayout menuItems={[]} roleName="Warden">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <p className="text-lg font-bold text-on-surface-variant">Loading your operations center...</p>
+          </div>
+        </div>
+      </PortalLayout>
+    );
+  }
 
   return (
     <PortalLayout menuItems={menuItems} roleName="Warden">

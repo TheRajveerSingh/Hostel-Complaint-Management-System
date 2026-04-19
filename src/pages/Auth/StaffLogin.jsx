@@ -15,6 +15,7 @@ export default function StaffLogin() {
     email: '',
     staff_id: '',
     category: '',
+    phone_number: '',
     password: ''
   });
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -161,6 +162,17 @@ export default function StaffLogin() {
               containerClassName={!isLogin ? '' : 'animate-in slide-in-from-top-4 duration-500'}
               required 
             />
+
+            {!isLogin && (
+              <Input 
+                label="Phone Number" 
+                type="tel"
+                placeholder="e.g. +91 98765 43210" 
+                value={formData.phone_number}
+                onChange={e => setFormData({...formData, phone_number: e.target.value})}
+                required 
+              />
+            )}
             
             <Input 
               label="Password" 
