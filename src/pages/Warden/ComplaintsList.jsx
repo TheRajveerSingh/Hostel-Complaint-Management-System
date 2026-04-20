@@ -135,6 +135,7 @@ export default function WardenComplaints() {
         .eq('id', selectedComplaint.id);
       if (error) throw error;
       
+      alert(`Success: Tactical deployment initiated. Specialist ${usersMap[selectedStaffToAssign]} has been assigned to the mission.`);
       setSelectedComplaint({...selectedComplaint, assigned_to: selectedStaffToAssign, status: 'in_progress'});
       fetchData(); // refresh table
     } catch (error) {

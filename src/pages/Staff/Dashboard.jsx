@@ -32,19 +32,31 @@ export default function StaffDashboard() {
 
   const [assignedTasks, setAssignedTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchTasks = async () => {
-      if (!currentUser) return;
+      if (!currentUser) {
+        console.warn('Mission Queue: No currentUser detected in session.');
+        return;
+      }
       
-      const { data } = await supabase
+      console.log(`Mission Queue: Fetching tasks for Staff ID: ${currentUser.id}`);
+      
+      const { data, error } = await supabase
         .from('complaints')
         .select('*')
         .eq('assigned_to', currentUser.id)
-        .neq('status', 'resolved') // Only show active tasks in queue
+        .neq('status', 'resolved')
         .order('created_at', { ascending: false });
 
-      if (data) setAssignedTasks(data);
+      if (error) {
+        console.error('Mission Queue: Supabase fetch error:', error);
+        setError(`Database Error: ${error.message}`);
+      } else {
+        console.log(`Mission Queue: Successfully fetched ${data?.length || 0} tasks.`);
+        setAssignedTasks(data || []);
+      }
       setLoading(false);
     };
 
@@ -156,6 +168,13 @@ export default function StaffDashboard() {
                       <Activity size={20} className="text-secondary" strokeWidth={2.5} />
                     </div>
                     <span className="text-sm font-bold text-on-surface-variant">Loading task queue...</span>
+                  </div>
+                </td></tr>
+              ) : error ? (
+                <tr><td colSpan="5" className="px-10 py-8 text-center">
+                  <div className="flex items-center justify-center gap-2 text-error">
+                    <AlertTriangle size={20} strokeWidth={2.5} />
+                    <span className="text-sm font-bold uppercase tracking-widest">{error}</span>
                   </div>
                 </td></tr>
               ) : assignedTasks.length === 0 ? (

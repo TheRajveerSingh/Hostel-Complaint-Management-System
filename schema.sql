@@ -70,8 +70,59 @@ ALTER TABLE complaints ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
 ALTER TABLE supervisor_credentials ENABLE ROW LEVEL SECURITY;
 
--- Note: Proper RLS policies should be configured based on your security requirements
--- For now, supervisor_credentials contains manual login info.
+-- 7. RLS POLICIES
+
+-- USERS TABLE POLICIES
+-- Allow authenticated users to read all profiles (for mapping names/IDs in UI)
+CREATE POLICY "Allow authenticated users to read all profiles" 
+ON users FOR SELECT 
+TO authenticated 
+USING (true);
+
+-- Allow users to update their own profile
+CREATE POLICY "Users can update own profile" 
+ON users FOR UPDATE 
+TO authenticated 
+USING (auth.uid() = id);
+
+-- COMPLAINTS TABLE POLICIES
+-- Students can see their own complaints
+CREATE POLICY "Students can see own complaints" 
+ON complaints FOR SELECT 
+TO authenticated 
+USING (auth.uid() = student_id);
+
+-- Wardens can see all complaints (for now, simplify to hostel check if needed in app logic)
+CREATE POLICY "Wardens can see all complaints" 
+ON complaints FOR SELECT 
+TO authenticated 
+USING (EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'warden'));
+
+-- Staff can see complaints assigned to them
+CREATE POLICY "Staff can see assigned complaints" 
+ON complaints FOR SELECT 
+TO authenticated 
+USING (auth.uid() = assigned_to);
+
+-- Allow students to insert complaints
+CREATE POLICY "Students can insert complaints" 
+ON complaints FOR INSERT 
+TO authenticated 
+WITH CHECK (auth.uid() = student_id);
+
+-- Allow wardens to update any complaint (to assign staff)
+CREATE POLICY "Wardens can update complaints" 
+ON complaints FOR UPDATE 
+TO authenticated 
+USING (EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'warden'));
+
+-- Allow staff to update complaints assigned to them (for status updates)
+CREATE POLICY "Staff can update assigned complaints" 
+ON complaints FOR UPDATE 
+TO authenticated 
+USING (auth.uid() = assigned_to);
+
+-- Note: supervisor_credentials contains manual login info.
 -- Default Supervisor Credentials
 INSERT INTO supervisor_credentials(username, password_hash) 
 VALUES ('rajveersingh3hm@gmail.com', '123456')

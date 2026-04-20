@@ -39,19 +39,25 @@ export default function ResolutionLog() {
   useEffect(() => {
     const fetchHistory = async () => {
       if (!currentUser) return;
-      const { data } = await supabase
+      
+      console.log(`Resolution Log: Fetching history for Staff ID: ${currentUser.id}`);
+      
+      const { data, error } = await supabase
         .from('complaints')
         .select('*')
         .eq('assigned_to', currentUser.id)
         .eq('status', 'resolved')
-        .order('updated_at', { ascending: false });
+        .order('resolved_at', { ascending: false });
       
-      if (data) {
+      if (error) {
+        console.error('Resolution Log: Supabase fetch error:', error);
+      } else if (data) {
+        console.log(`Resolution Log: Successfully fetched ${data.length} resolved tasks.`);
         setHistoryLogs(data);
 
         // Calculate real avg resolution time
-        const validTimes = data.filter(c => c.created_at && c.updated_at).map(c => {
-          const diff = new Date(c.updated_at) - new Date(c.created_at);
+        const validTimes = data.filter(c => c.created_at && c.resolved_at).map(c => {
+          const diff = new Date(c.resolved_at) - new Date(c.created_at);
           return diff / (1000 * 60); // minutes
         });
         if (validTimes.length > 0) {
@@ -100,7 +106,7 @@ export default function ResolutionLog() {
     { header: 'Case ID', dataKey: 'id' },
     { header: 'Category', dataKey: 'category' },
     { header: 'Location', dataKey: 'location' },
-    { header: 'Completion Date', dataKey: 'updated_at' }
+    { header: 'Completion Date', dataKey: 'resolved_at' }
   ];
 
   return (
@@ -249,13 +255,13 @@ export default function ResolutionLog() {
                       <td className="px-8 py-6 text-xs">
                          <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-surface-container-high rounded-lg text-[10px] font-black uppercase tracking-widest opacity-60">
                           <Calendar size={12} strokeWidth={3} />
-                          {new Date(item.updated_at).toLocaleDateString()}
+                          {new Date(item.resolved_at).toLocaleDateString()}
                         </span>
                       </td>
                       <td className="px-8 py-6 text-xs">
                         <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-success/10 text-success rounded-lg text-[10px] font-black uppercase tracking-widest">
                           <Clock size={12} strokeWidth={3} />
-                          {calculateHours(item.created_at, item.updated_at)}
+                          {calculateHours(item.created_at, item.resolved_at)}
                         </span>
                       </td>
                       <td className="px-8 py-6 text-xs italic opacity-80 max-w-xs truncate font-medium">
