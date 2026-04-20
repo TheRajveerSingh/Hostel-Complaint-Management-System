@@ -126,7 +126,7 @@ export default function WardenDashboard() {
 
   // Find active immediate crisis complaints
   const immediateCrisisComplaints = complaints.filter(c => 
-    c.category === 'Immediate crisis' && c.status !== 'resolved'
+    c.is_emergency && c.status !== 'resolved'
   );
 
   if (!currentUser) {
@@ -323,7 +323,7 @@ export default function WardenDashboard() {
                   <h3 className="display-font text-3xl font-black text-error leading-none uppercase tracking-tighter">IMMEDIATE CRISIS</h3>
                 </div>
                 <p className="text-on-surface-variant font-bold text-sm tracking-widest uppercase opacity-60">
-                  {immediateCrisisComplaints?.length || 0} active urgent complaint{(immediateCrisisComplaints?.length || 0) !== 1 ? 's' : ''} detected
+                  Active Emergency. Help needed ASAP
                 </p>
               </div>
             </div>

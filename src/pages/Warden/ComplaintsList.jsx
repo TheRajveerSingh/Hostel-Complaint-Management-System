@@ -341,11 +341,11 @@ export default function WardenComplaints() {
               ) : filteredComplaints.length === 0 ? (
                 <tr><td colSpan="6" className="px-10 py-8 text-center text-on-surface-variant font-bold text-sm">No Tactical Anomalies Detected.</td></tr>
               ) : filteredComplaints.map((c) => (
-                <tr key={c.id} className={`transition-all duration-300 group relative ${
+                <tr key={c.id} className={`transition-all duration-300 group ${
                   c.is_emergency 
-                    ? 'bg-gradient-to-r from-gray-700/[0.08] to-gray-600/[0.05] shadow-[0_0_32px_rgba(120,120,140,0.15)] ring-2 ring-inset ring-gray-500/20 hover:bg-gradient-to-r hover:from-gray-700/[0.12] hover:to-gray-600/[0.08] hover:shadow-[0_0_40px_rgba(120,120,140,0.2)]' 
+                    ? 'bg-gradient-to-r from-gray-700/[0.08] to-gray-600/[0.05] shadow-[0_0_32px_rgba(120,120,140,0.15)] ring-1 ring-inset ring-gray-400/10 hover:bg-gradient-to-r hover:from-gray-700/[0.12] hover:to-gray-600/[0.08] hover:shadow-[0_0_40px_rgba(120,120,140,0.2)]' 
                     : 'hover:bg-primary/[0.03]'
-                } before:${c.is_emergency ? 'before:absolute before:inset-0 before:rounded-none before:pointer-events-none before:box-shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]' : ''}`}>
+                }`}>
                   <td className="px-10 py-8 relative z-10">
                     <div className="flex items-center gap-4">
                       <div className={`w-1.5 h-6 rounded-full ${c.is_emergency ? 'bg-gradient-to-b from-gray-400 to-gray-500 animate-pulse shadow-[0_0_12px_rgba(150,150,170,0.4)]' : 'bg-primary/20 group-hover:bg-primary transition-colors'}`} />
