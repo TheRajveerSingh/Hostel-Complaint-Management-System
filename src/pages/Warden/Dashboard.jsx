@@ -99,21 +99,30 @@ export default function WardenDashboard() {
   // Calculate Incident Velocity (real data - complaints per day)
   const getIncidentVelocityData = () => {
     const today = new Date();
-    const daysToShow = timeRange || 365; // 0 means all time (one year)
+    const daysToShow = timeRange || 30; // Default to 30 if 0
     const daysData = {};
     
+    // Helper to get a stable local ISO date key (YYYY-MM-DD)
+    const getLocalDateKey = (d) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     // Initialize all days in range
     for (let i = daysToShow - 1; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      const dateKey = date.toISOString().split('T')[0];
+      const dateKey = getLocalDateKey(date);
       const dayName = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
       daysData[dateKey] = { name: dayName, count: 0, date: dateKey, fullDate: date };
     }
     
     // Count complaints per day
     complaints.forEach(complaint => {
-      const complaintDate = new Date(complaint.created_at).toISOString().split('T')[0];
+      const dbDate = new Date(complaint.created_at);
+      const complaintDate = getLocalDateKey(dbDate);
       if (daysData[complaintDate]) {
         daysData[complaintDate].count += 1;
       }
