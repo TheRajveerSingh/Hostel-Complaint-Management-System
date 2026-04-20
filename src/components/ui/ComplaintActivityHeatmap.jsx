@@ -7,7 +7,10 @@ const monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 
 const formatDateKey = (date) => {
   const d = new Date(date);
-  return d.toISOString().split('T')[0];
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 // Function to get color based on complaint count - Low (1-3), Medium (4-6), High (7-9), Very High (9+)
@@ -33,7 +36,7 @@ export default function ComplaintActivityHeatmap({ complaints = [] }) {
   const complaintsByDate = useMemo(() => {
     const map = {};
     complaints.forEach(complaint => {
-      const date = new Date(complaint.created_at).toISOString().split('T')[0];
+      const date = formatDateKey(complaint.created_at);
       map[date] = (map[date] || 0) + 1;
     });
     return map;
