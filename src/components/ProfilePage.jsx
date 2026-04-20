@@ -4,7 +4,7 @@ import PortalLayout from '../layouts/PortalLayout';
 import { Card } from './ui/Card';
 import Button from './ui/Button';
 import Input from './ui/Input';
-import { Camera, Mail, Home, Badge, Edit2, ArrowLeft } from 'lucide-react';
+import { Camera, Mail, Home, Badge, Edit2, ArrowLeft, Phone, MapPin } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { authService } from '../lib/auth';
 
@@ -19,6 +19,11 @@ export default function ProfilePage() {
   const [editData, setEditData] = useState({
     name: userProfile?.name || '',
     email: userProfile?.email || '',
+    phone_number: userProfile?.phone_number || '',
+    staff_id: userProfile?.staff_id || '',
+    warden_id: userProfile?.warden_id || '',
+    registration_number: userProfile?.registration_number || '',
+    room_number: userProfile?.room_number || '',
   });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -33,6 +38,11 @@ export default function ProfilePage() {
       setEditData({
         name: updated.name || '',
         email: updated.email || '',
+        phone_number: updated.phone_number || '',
+        staff_id: updated.staff_id || '',
+        warden_id: updated.warden_id || '',
+        registration_number: updated.registration_number || '',
+        room_number: updated.room_number || '',
       });
     }
   }, []);
@@ -72,6 +82,11 @@ export default function ProfilePage() {
       const updateData = {
         name: editData.name,
         email: editData.email,
+        phone_number: editData.phone_number,
+        staff_id: editData.staff_id || null,
+        warden_id: editData.warden_id || null,
+        registration_number: editData.registration_number || null,
+        room_number: editData.room_number || null,
       };
       
       if (editData.photo_url) {
@@ -207,6 +222,14 @@ export default function ProfilePage() {
                 </div>
                 <p className="text-lg font-bold text-on-surface break-all">{userProfile?.email}</p>
               </div>
+              
+              <div className="p-6 bg-surface-container-high rounded-xl border border-outline/5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Phone size={16} className="text-on-surface-variant" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Phone Number</p>
+                </div>
+                <p className="text-lg font-bold text-on-surface">{userProfile?.phone_number || 'Not provided'}</p>
+              </div>
 
               {userProfile?.hostel_id && (
                 <div className="p-6 bg-surface-container-high rounded-xl border border-outline/5">
@@ -215,6 +238,16 @@ export default function ProfilePage() {
                     <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Hostel Assignment</p>
                   </div>
                   <p className="text-lg font-bold text-on-surface">{userProfile.hostel_id}</p>
+                </div>
+              )}
+
+              {userProfile?.room_number && (
+                <div className="p-6 bg-surface-container-high rounded-xl border border-outline/5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MapPin size={16} className="text-on-surface-variant" />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Room Number</p>
+                  </div>
+                  <p className="text-lg font-bold text-on-surface">{userProfile.room_number}</p>
                 </div>
               )}
 
@@ -329,6 +362,50 @@ export default function ProfilePage() {
               value={editData.email}
               onChange={(e) => setEditData({...editData, email: e.target.value})}
             />
+
+            <Input
+              label="Phone Number"
+              type="tel"
+              placeholder="Enter your phone number"
+              value={editData.phone_number}
+              onChange={(e) => setEditData({...editData, phone_number: e.target.value})}
+            />
+
+            {userProfile?.staff_id && (
+              <Input
+                label="Staff ID"
+                placeholder="Enter Staff ID"
+                value={editData.staff_id}
+                onChange={(e) => setEditData({...editData, staff_id: e.target.value})}
+              />
+            )}
+
+            {userProfile?.warden_id && (
+              <Input
+                label="Warden ID"
+                placeholder="Enter Warden ID"
+                value={editData.warden_id}
+                onChange={(e) => setEditData({...editData, warden_id: e.target.value})}
+              />
+            )}
+
+            {userProfile?.registration_number && (
+              <Input
+                label="Registration Number"
+                placeholder="Enter Registration Number"
+                value={editData.registration_number}
+                onChange={(e) => setEditData({...editData, registration_number: e.target.value})}
+              />
+            )}
+
+            {userProfile?.registration_number && (
+              <Input
+                label="Room Number"
+                placeholder="Enter Room Number"
+                value={editData.room_number}
+                onChange={(e) => setEditData({...editData, room_number: e.target.value})}
+              />
+            )}
           </div>
 
           <div className="flex gap-3">
@@ -343,7 +420,15 @@ export default function ProfilePage() {
               onClick={() => {
                 setIsEditMode(false);
                 setPasswordVerified(false);
-                setEditData({ name: userProfile?.name || '', email: userProfile?.email || '' });
+                setEditData({ 
+                  name: userProfile?.name || '', 
+                  email: userProfile?.email || '',
+                  phone_number: userProfile?.phone_number || '',
+                  staff_id: userProfile?.staff_id || '',
+                  warden_id: userProfile?.warden_id || '',
+                  registration_number: userProfile?.registration_number || '',
+                  room_number: userProfile?.room_number || ''
+                });
                 setPhotoPreview(userProfile?.photo_url || null);
               }}
               variant="secondary"

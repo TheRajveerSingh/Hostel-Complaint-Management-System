@@ -94,6 +94,7 @@ export const authService = {
             warden_id: userData.warden_id,
             supervisor_id: userData.supervisor_id,
             hostel_id: userData.hostel_id,
+            room_number: userData.room_number,
             category: userData.category,
             photo_url: userData.photo_url || null,
           }

@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
     warden_id TEXT,
     supervisor_id TEXT,
     hostel_id TEXT, 
+    room_number TEXT,
     category TEXT,
     photo_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

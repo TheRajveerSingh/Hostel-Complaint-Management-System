@@ -152,8 +152,9 @@ export default function WardenComplaints() {
     }
 
     try {
-      const electricalKeywords = ['wiring', 'circuit', 'outlet', 'plug', 'socket', 'light', 'bulb', 'fan', 'ac', 'air', 'power', 'electricity', 'electrical', 'short', 'sparking', 'switch'];
+      const electricalKeywords = ['wiring', 'circuit', 'outlet', 'plug', 'socket', 'light', 'bulb', 'fan', 'ac', 'air', 'power', 'electricity', 'electrical', 'short', 'switch'];
       const paintingKeywords = ['paint', 'color', 'wall', 'stain', 'mark', 'scratch', 'chip', 'peeling', 'fade', 'coating', 'surface', 'finish', 'brush'];
+      const fireKeywords = ['fire', 'smoke', 'extinguisher', 'flame', 'burning', 'blast', 'explosive', 'gas leak', 'sparking', 'fire alarm'];
 
       let classifiedCount = 0;
 
@@ -170,6 +171,8 @@ export default function WardenComplaints() {
           newCategory = 'Electrical';
         } else if (paintingKeywords.some(keyword => descriptionLower.includes(keyword))) {
           newCategory = 'Painting';
+        } else if (fireKeywords.some(keyword => descriptionLower.includes(keyword))) {
+          newCategory = 'Fire Safety';
         }
 
         if (newCategory !== complaint.category) {
