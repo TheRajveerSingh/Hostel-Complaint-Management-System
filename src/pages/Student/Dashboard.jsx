@@ -649,14 +649,16 @@ export default function StudentDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-xl bg-surface/80 animate-in fade-in duration-500 overflow-y-auto pt-20">
           <div className="absolute inset-0 z-[-1] mesh-gradient opacity-20" />
           
-          <Card className="w-full max-w-2xl bg-surface-container-low border-2 border-outline-variant p-0 relative shadow-[0_64px_96px_-12px_rgba(30,27,75,0.2)] overflow-hidden">
-            <div className="p-8 md:p-12">
-              <button 
-                onClick={() => setSelectedComplaint(null)}
-                className="absolute top-8 right-8 p-3 rounded-2xl bg-surface-container-high text-on-surface-variant hover:text-tertiary hover:rotate-90 transition-all duration-500"
-              >
-                <X size={20} strokeWidth={3} />
-              </button>
+          <Card className={`w-full ${selectedComplaint.status === 'resolved' ? 'max-w-6xl' : 'max-w-2xl'} bg-surface-container-low border-2 border-outline-variant p-0 relative shadow-[0_64px_96px_-12px_rgba(30,27,75,0.2)] overflow-hidden`}>
+            <button 
+              onClick={() => setSelectedComplaint(null)}
+              className="absolute top-8 right-8 z-10 p-3 rounded-2xl bg-surface-container-high text-on-surface-variant hover:text-tertiary hover:rotate-90 transition-all duration-500"
+            >
+              <X size={20} strokeWidth={3} />
+            </button>
+
+            <div className={selectedComplaint.status === 'resolved' ? "grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-outline/10" : ""}>
+              <div className="p-8 md:p-12">
 
               <div className="inline-flex p-5 bg-primary/10 text-primary rounded-2xl mb-10 ring-4 ring-primary/5">
                 <FileText size={40} strokeWidth={2.5} />
@@ -718,9 +720,11 @@ export default function StudentDashboard() {
                   </div>
                 </div>
               )}
+              </div>
 
               {selectedComplaint.status === 'resolved' && (
-                <div className="space-y-8">
+                <div className="p-8 md:p-12 bg-surface-container/30">
+                  <div className="space-y-8">
                   {/* Technician Profile */}
                   <div className="p-8 bg-surface-container-high/30 rounded-3xl border border-outline/5">
                     <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary mb-6">Technician Protocol</h4>
@@ -796,6 +800,7 @@ export default function StudentDashboard() {
                         {isSubmittingFeedback ? 'Transmitting Data...' : 'Verify & Submit Transcript'}
                       </Button>
                     </div>
+                  </div>
                   </div>
                 </div>
               )}
