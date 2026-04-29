@@ -19,7 +19,9 @@ import {
   Calendar,
   ChevronRight,
   ShieldAlert,
-  Camera
+  Camera,
+  ImagePlus,
+  X
 } from 'lucide-react';
 
 import { supabase } from '../../lib/supabase';
@@ -31,6 +33,9 @@ export default function StaffComplaintDetail() {
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState('');
   const [imageBase64, setImageBase64] = useState('');
+  const [showCamera, setShowCamera] = useState(false);
+  const videoRef = React.useRef(null);
+  const streamRef = React.useRef(null);
 
   useEffect(() => {
     const fetchComplaint = async () => {
@@ -60,6 +65,39 @@ export default function StaffComplaintDetail() {
       reader.onloadend = () => setImageBase64(reader.result);
       reader.readAsDataURL(file);
     }
+  };
+
+  const startCamera = async () => {
+    setShowCamera(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      alert('Camera access denied or unavailable.');
+      setShowCamera(false);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    setImageBase64(dataUrl);
+    stopCamera();
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setShowCamera(false);
   };
 
   const updateStatus = async (newStatus) => {
@@ -318,23 +356,65 @@ export default function StaffComplaintDetail() {
                 />
                 
                 <div className="mb-6 relative">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={handleImageUpload} 
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  />
-                  <div className="flex flex-col items-center justify-center p-6 bg-surface-container-low rounded-xl border border-dashed border-outline/20 hover:border-secondary transition-all">
-                    {imageBase64 ? (
-                       <img src={imageBase64} alt="Evidentiary proof" className="h-32 object-contain rounded-lg shadow-xl" />
-                    ) : (
-                       <>
-                         <Camera size={24} className="text-secondary/60 mb-2" />
-                         <span className="text-[10px] uppercase font-black tracking-widest text-secondary/60">Upload Photo Evidence</span>
-                         <span className="text-[8px] font-black uppercase text-on-surface-variant/40 tracking-wider mt-1">Tap or Drop (Max 2MB)</span>
-                       </>
-                    )}
-                  </div>
+                  {showCamera ? (
+                    <div className="relative rounded-2xl overflow-hidden bg-black border-2 border-secondary/30 shadow-2xl">
+                      <video ref={videoRef} autoPlay playsInline className="w-full h-48 object-cover" />
+                      <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-3 p-4 bg-gradient-to-t from-black/80 to-transparent">
+                        <Button
+                          type="button"
+                          onClick={capturePhoto}
+                          className="py-2 px-6 bg-secondary text-white text-[10px] font-black uppercase tracking-widest gap-2"
+                        >
+                          <Camera size={14} strokeWidth={3} />
+                          Capture
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={stopCamera}
+                          variant="secondary"
+                          className="py-2 px-4 text-[10px] font-black uppercase tracking-widest border border-white/20 text-white shadow-none"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : imageBase64 ? (
+                    <div className="relative group">
+                      <img src={imageBase64} alt="Evidentiary proof" className="h-48 w-full object-cover rounded-xl shadow-xl border-2 border-secondary/20" />
+                      <button 
+                        onClick={() => setImageBase64('')}
+                        className="absolute top-2 right-2 p-2 bg-error text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                      >
+                        <X size={14} strokeWidth={3} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={startCamera}
+                        className="flex flex-col items-center justify-center p-6 bg-surface-container-low rounded-2xl border-2 border-dashed border-secondary/20 hover:border-secondary/50 hover:bg-secondary/5 transition-all group"
+                      >
+                        <div className="p-3 rounded-xl bg-secondary/10 text-secondary group-hover:scale-110 transition-transform">
+                          <Camera size={24} strokeWidth={2.5} />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-secondary/70 mt-3">Open Camera</span>
+                      </button>
+
+                      <label className="flex flex-col items-center justify-center p-6 bg-surface-container-low rounded-2xl border-2 border-dashed border-primary/20 hover:border-primary/50 hover:bg-primary/5 transition-all group cursor-pointer">
+                        <div className="p-3 rounded-xl bg-primary/10 text-primary group-hover:scale-110 transition-transform">
+                          <ImagePlus size={24} strokeWidth={2.5} />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-primary/70 mt-3">Browse File</span>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={handleImageUpload} 
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  )}
                 </div>
 
                 <Button 
