@@ -62,11 +62,11 @@ export default function StudentDashboard() {
         .eq('student_id', user.id)
         .order('created_at', { ascending: false });
         
-      // Fetch users for staff names
-      const { data: uData } = await supabase.from('users').select('id, name');
+      // Fetch users for staff names and IDs
+      const { data: uData } = await supabase.from('users').select('id, name, staff_id');
       if (uData) {
         const map = {};
-        uData.forEach(u => { map[u.id] = u.name; });
+        uData.forEach(u => { map[u.id] = { name: u.name, staff_id: u.staff_id }; });
         setUsersMap(map);
       }
 
@@ -155,6 +155,20 @@ export default function StudentDashboard() {
   const getCleanDescription = (description) => {
     if (!description) return '';
     return description.split('--- STAFF LOG ---')[0].trim();
+  };
+
+  // Extract staff log data (notes and image)
+  const getStaffLog = (description) => {
+    if (!description || !description.includes('--- STAFF LOG ---')) return null;
+    const logPart = description.split('--- STAFF LOG ---')[1];
+    
+    const notesMatch = logPart.match(/NOTES:(.*?)(IMAGE:|$)/s);
+    const imageMatch = logPart.match(/IMAGE:(.*)/s);
+    
+    return {
+      notes: notesMatch ? notesMatch[1].trim() : '',
+      image: imageMatch ? imageMatch[1].trim() : null
+    };
   };
 
   // Filter complaints based on active tab
@@ -420,11 +434,16 @@ export default function StudentDashboard() {
                         <span className="text-sm font-black text-on-surface tracking-tight">{c.category}</span>
                       </td>
                       <td className="px-10 py-8">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-secondary/10 flex items-center justify-center text-secondary text-[10px] font-black">
-                            {(usersMap[c.assigned_to] || "?").substring(0, 1).toUpperCase()}
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center text-secondary text-[10px] font-black border border-secondary/20">
+                            {(usersMap[c.assigned_to]?.name || "?").substring(0, 1).toUpperCase()}
                           </div>
-                          <span className="text-xs font-black text-on-surface uppercase tracking-tight">{usersMap[c.assigned_to] || 'Unassigned'}</span>
+                          <div className="flex flex-col">
+                            <span className="text-xs font-black text-on-surface uppercase tracking-tight">{usersMap[c.assigned_to]?.name || 'Unassigned'}</span>
+                            {usersMap[c.assigned_to]?.staff_id && (
+                              <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest">ID: {usersMap[c.assigned_to].staff_id}</span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-10 py-8">
@@ -701,46 +720,82 @@ export default function StudentDashboard() {
               )}
 
               {selectedComplaint.status === 'resolved' && (
-                <div className="p-10 bg-primary/5 rounded-3xl border-2 border-primary/20 relative group/feedback overflow-hidden">
-                  <div className="absolute top-0 right-0 p-6 opacity-10 transition-opacity">
-                    <Star size={100} strokeWidth={1} />
-                  </div>
-                  <div className="relative z-10">
-                    <h4 className="display-font text-2xl font-black text-primary mb-2 uppercase tracking-tight">Resolution Feedback</h4>
-                    <p className="text-sm text-on-surface-variant font-bold mb-8 leading-relaxed max-w-sm uppercase tracking-widest opacity-60">Please authenticate the quality of maintenance services provided.</p>
-                    
-                    <div className="flex space-x-2 text-tertiary mb-6">
-                      {[1,2,3,4,5].map(star => (
-                        <button 
-                          key={star} 
-                          className="p-1 hover:scale-125 hover:rotate-12 transition-all duration-300"
-                          onMouseEnter={() => setHoverRating(star)}
-                          onMouseLeave={() => setHoverRating(0)}
-                          onClick={() => setRating(star)}
-                        >
-                          <Star 
-                            size={40} 
-                            className={`transition-colors ${(hoverRating || rating) >= star ? 'fill-primary text-primary' : 'text-on-surface-variant/30'}`} 
-                          />
-                        </button>
-                      ))}
+                <div className="space-y-8">
+                  {/* Technician Profile */}
+                  <div className="p-8 bg-surface-container-high/30 rounded-3xl border border-outline/5">
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary mb-6">Technician Protocol</h4>
+                    <div className="flex items-center gap-6">
+                      <div className="w-16 h-16 rounded-2xl bg-secondary/10 flex items-center justify-center text-secondary text-xl font-black border-2 border-secondary/20 shadow-lg">
+                        {(usersMap[selectedComplaint.assigned_to]?.name || "?").substring(0, 1).toUpperCase()}
+                      </div>
+                      <div>
+                        <h5 className="text-xl font-black text-on-surface uppercase tracking-tight">{usersMap[selectedComplaint.assigned_to]?.name || 'Institutional Staff'}</h5>
+                        <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mt-1 opacity-60">
+                          Staff ID: <span className="text-secondary font-black">{usersMap[selectedComplaint.assigned_to]?.staff_id || 'N/A'}</span>
+                        </p>
+                      </div>
                     </div>
+                  </div>
 
-                    <textarea
-                      value={feedbackText}
-                      onChange={(e) => setFeedbackText(e.target.value)}
-                      placeholder="Enter operational commentary or details regarding the repair quality..."
-                      className="w-full bg-surface-container border-2 border-outline/10 text-on-surface text-sm font-medium rounded-2xl p-5 outline-none focus:border-primary/40 focus:ring-8 focus:ring-primary/5 transition-all mb-8 resize-none shadow-inner"
-                      rows="3"
-                    />
+                  {/* Resolution Evidence (Staff Photo) */}
+                  {getStaffLog(selectedComplaint.description)?.image && getStaffLog(selectedComplaint.description).image !== 'NO_IMAGE' && (
+                    <div className="p-8 bg-success/5 rounded-3xl border border-success/10">
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-success mb-6">Resolution Evidence (Post-Work)</h4>
+                      <div className="aspect-video w-full rounded-2xl overflow-hidden border-2 border-success/10 shadow-2xl group/staff-img">
+                        <img 
+                          src={getStaffLog(selectedComplaint.description).image} 
+                          alt="Resolution Proof" 
+                          className="w-full h-full object-cover group-hover/staff-img:scale-105 transition-transform duration-700"
+                        />
+                      </div>
+                      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mt-4 opacity-60 italic">
+                        "Official evidentiary proof uploaded by the maintenance unit upon task completion."
+                      </p>
+                    </div>
+                  )}
 
-                    <Button 
-                      onClick={handleFeedbackSubmit} 
-                      disabled={isSubmittingFeedback || rating === 0} 
-                      className={`w-full py-5 text-sm font-black uppercase tracking-[0.3em] shadow-2xl shadow-primary/30 active:scale-[0.98] ${rating === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      {isSubmittingFeedback ? 'Transmitting Data...' : 'Verify & Submit Transcript'}
-                    </Button>
+                  {/* Feedback Form */}
+                  <div className="p-10 bg-primary/5 rounded-3xl border-2 border-primary/20 relative group/feedback overflow-hidden">
+                    <div className="absolute top-0 right-0 p-6 opacity-10 transition-opacity">
+                      <Star size={100} strokeWidth={1} />
+                    </div>
+                    <div className="relative z-10">
+                      <h4 className="display-font text-2xl font-black text-primary mb-2 uppercase tracking-tight">Resolution Feedback</h4>
+                      <p className="text-sm text-on-surface-variant font-bold mb-8 leading-relaxed max-w-sm uppercase tracking-widest opacity-60">Please authenticate the quality of maintenance services provided.</p>
+                      
+                      <div className="flex space-x-2 text-tertiary mb-6">
+                        {[1,2,3,4,5].map(star => (
+                          <button 
+                            key={star} 
+                            className="p-1 hover:scale-125 hover:rotate-12 transition-all duration-300"
+                            onMouseEnter={() => setHoverRating(star)}
+                            onMouseLeave={() => setHoverRating(0)}
+                            onClick={() => setRating(star)}
+                          >
+                            <Star 
+                              size={40} 
+                              className={`transition-colors ${(hoverRating || rating) >= star ? 'fill-primary text-primary' : 'text-on-surface-variant/30'}`} 
+                            />
+                          </button>
+                        ))}
+                      </div>
+
+                      <textarea
+                        value={feedbackText}
+                        onChange={(e) => setFeedbackText(e.target.value)}
+                        placeholder="Enter operational commentary or details regarding the repair quality..."
+                        className="w-full bg-surface-container border-2 border-outline/10 text-on-surface text-sm font-medium rounded-2xl p-5 outline-none focus:border-primary/40 focus:ring-8 focus:ring-primary/5 transition-all mb-8 resize-none shadow-inner"
+                        rows="3"
+                      />
+
+                      <Button 
+                        onClick={handleFeedbackSubmit} 
+                        disabled={isSubmittingFeedback || rating === 0} 
+                        className={`w-full py-5 text-sm font-black uppercase tracking-[0.3em] shadow-2xl shadow-primary/30 active:scale-[0.98] ${rating === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {isSubmittingFeedback ? 'Transmitting Data...' : 'Verify & Submit Transcript'}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
